@@ -104,6 +104,14 @@ resource "aws_iam_role_policy" "s3files_service_events" {
   })
 }
 
+# --- サービスクオータ：G 系スポットの vCPU 上限（デフォルト 0 のアカウントがあるため引き上げを申請する） ---
+# 承認は AWS 側の審査次第で、apply が承認待ちで止まることがある。値は vCPU 数（g6e.xlarge = 4）。
+resource "aws_servicequotas_service_quota" "spot_g_vt" {
+  service_code = "ec2"
+  quota_code   = "L-3819A6DF" # All G and VT Spot Instance Requests
+  value        = 8
+}
+
 # --- S3 Files：ファイルシステムとマウントターゲット（PoC は 1 AZ） ---
 
 resource "aws_s3files_file_system" "this" {
