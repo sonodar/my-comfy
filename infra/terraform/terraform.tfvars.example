@@ -4,6 +4,8 @@
 aws_region = "ap-northeast-1"
 vpc_id     = "vpc-xxxxxxxxxxxxxxxxx"
 subnet_id  = "subnet-xxxxxxxxxxxxxxxxx"
+# マウントターゲットを作る AZ 分（a/c/d）のサブネット。インスタンスが実際に使うのは subnet_id の1つだけ
+subnet_ids = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyyyyyy", "subnet-zzzzzzzzzzzzzzzzz"]
 
 instance_type = "g6e.xlarge"
 # dlami_ssm_parameter = "/aws/service/deeplearning/ami/x86_64/oss-nvidia-driver-gpu-pytorch-2.12-ubuntu-24.04/latest/ami-id"

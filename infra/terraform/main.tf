@@ -112,7 +112,7 @@ resource "aws_servicequotas_service_quota" "spot_g_vt" {
   value        = 8
 }
 
-# --- S3 Files：ファイルシステムとマウントターゲット（PoC は 1 AZ） ---
+# --- S3 Files：ファイルシステムとマウントターゲット（subnet_ids の各 AZ に作る） ---
 
 resource "aws_s3files_file_system" "this" {
   bucket   = aws_s3_bucket.this.arn
@@ -138,9 +138,17 @@ resource "aws_security_group" "s3files" {
   }
 }
 
+locals {
+  # マウントターゲットは AZ 分だけ先に作っておく（作成は無料）。
+  # インスタンスが使うサブネットは var.subnet_id の1つだけで、AZ を切り替えても作り直しにならない。
+  mount_subnet_ids = length(var.subnet_ids) > 0 ? var.subnet_ids : [var.subnet_id]
+}
+
 resource "aws_s3files_mount_target" "this" {
+  for_each = toset(local.mount_subnet_ids)
+
   file_system_id  = aws_s3files_file_system.this.id
-  subnet_id       = var.subnet_id
+  subnet_id       = each.value
   security_groups = [aws_security_group.s3files.id]
 }
 

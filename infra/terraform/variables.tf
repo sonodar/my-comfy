@@ -16,8 +16,14 @@ variable "vpc_id" {
 }
 
 variable "subnet_id" {
-  description = "既存パブリックサブネットの ID（インスタンスと S3 Files マウントターゲットを置く。インターネットに出られること）"
+  description = "既存パブリックサブネットの ID（インスタンスが実際に使うのはこの1つだけ。インターネットに出られること）"
   type        = string
+}
+
+variable "subnet_ids" {
+  description = "S3 Files マウントターゲットを作るサブネットの ID 一覧（AZ ごとに1つ、a/c/d 分）。空なら subnet_id のみ"
+  type        = list(string)
+  default     = []
 }
 
 variable "instance_type" {
