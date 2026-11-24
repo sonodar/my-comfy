@@ -1,0 +1,14 @@
+[Unit]
+Description=mycomfy boot init (mount instance store and S3 Files)
+After=network-online.target
+Wants=network-online.target
+OnFailure=mycomfy-notify-failure@%n.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /opt/mycomfy/boot/scripts/mount-instance-store.sh
+ExecStart=/bin/bash /opt/mycomfy/boot/scripts/mount-s3files.sh
+
+[Install]
+WantedBy=multi-user.target

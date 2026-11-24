@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify mycomfy boot failure (%i)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/mycomfy/boot/scripts/notify-failure.sh %i
