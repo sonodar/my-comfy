@@ -10,8 +10,8 @@ data "aws_vpc" "selected" {
 locals {
   bucket_name = "${var.bucket_name_prefix}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
   # Tailscale 認証キーを入れる SSM パラメータの名前（固定）。
-  # 中身は Reusable で発行した認証キー、タイプは SecureString、暗号化キーは既定の aws/ssm で作ること
-  # （カスタマーマネージドキーだとインスタンス側に kms:Decrypt が別途必要になる）。
+  # パラメータの器（SecureString、暗号化キーは既定の aws/ssm）は Terraform が作り、
+  # 値（Reusable で発行した認証キー）は apply の後に Terraform の外で差し替える。
   # 認証キーは新規インスタンスの参加登録に使う。この構成ではインスタンスを作り直すたびに
   # 登録が発生する（同じインスタンスの停止→起動では再登録しない）ため、実質は起動のたびに要る。
   # キーは Reusable かつ Ephemeral で発行すること（Ephemeral のマシンはオフラインになると
@@ -250,6 +250,20 @@ resource "aws_iam_role_policy" "instance_notify" {
       Resource = var.notify_topic_arn
     }]
   })
+}
+
+# パラメータの器だけを Terraform で作る。値はダミーで、実キーは Terraform の外で
+# （AWS アプリやコンソールから）差し替える。ignore_changes により、差し替え後の値が
+# tfstate に取り込まれることはない
+resource "aws_ssm_parameter" "tailscale_auth_key" {
+  name        = local.tailscale_auth_key_parameter
+  description = "mycomfy の Tailscale 認証キー。値は Terraform の外で設定すること"
+  type        = "SecureString"
+  value       = "placeholder-set-the-real-key-outside-terraform"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 resource "aws_iam_role_policy" "instance_tailscale_key" {
