@@ -12,10 +12,18 @@ if [ -f "$ENV_FILE" ]; then
   . "$ENV_FILE"
 fi
 
-UNIT="${1:-unknown-unit}"
+UNIT="${1:-不明}"
 DETAIL="${2:-}"
 HOST="$(hostname)"
-MESSAGE="mycomfy boot failure: unit=${UNIT} host=${HOST} time=$(date -Is)${DETAIL:+ $DETAIL}"
+NOTIFIED_AT="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')"
+MESSAGE="起動処理に失敗しました。
+対象: $UNIT
+ホスト: $HOST
+時刻: $NOTIFIED_AT"
+if [ -n "$DETAIL" ]; then
+  MESSAGE="$MESSAGE
+$DETAIL"
+fi
 
 if [ -z "${NOTIFY_TOPIC_ARN:-}" ]; then
   echo "NOTIFY_TOPIC_ARN is not set; cannot notify" >&2
@@ -28,5 +36,5 @@ fi
 
 aws sns publish \
   --topic-arn "$NOTIFY_TOPIC_ARN" \
-  --subject "mycomfy boot failure: ${UNIT}" \
+  --subject "mycomfy の起動に失敗しました" \
   --message "$MESSAGE"

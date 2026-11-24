@@ -31,15 +31,30 @@ export AWS_DEFAULT_REGION="$AWS_REGION"
 cat > /opt/mycomfy/boot/scripts/notify-failure.sh <<'NOTIFY_SCRIPT'
 ${notify_failure_script}
 NOTIFY_SCRIPT
-trap 'bash /opt/mycomfy/boot/scripts/notify-failure.sh cloud-init-user-data "line=$LINENO exit=$?" || true' ERR
+notify_user_data_failure() {
+  local exit_status="$1" line="$2"
+  local detail="user-data の $line 行目で失敗しました。終了コード $exit_status"
+  if [ -s /var/log/mycomfy/install-failure ]; then
+    detail="失敗した工程: $(cat /var/log/mycomfy/install-failure)。ログ: /var/log/mycomfy/install.log。終了コード $exit_status"
+  fi
+  bash /opt/mycomfy/boot/scripts/notify-failure.sh 初回セットアップ "$detail" || true
+}
+trap 'notify_user_data_failure "$?" "$LINENO"' ERR
+rm -f /var/log/mycomfy/install-failure
 
 cat > /etc/systemd/system/mycomfy-notify-failure@.service <<'NOTIFY_UNIT'
 ${notify_failure_unit}
 NOTIFY_UNIT
 
+for apt_sources in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+  if [ -f "$apt_sources" ]; then
+    sed -i -E 's@http://(([^/[:space:]]+\.)?archive\.ubuntu\.com|security\.ubuntu\.com)/ubuntu@https://\1/ubuntu@g' "$apt_sources"
+  fi
+done
+
 # aws cli が無ければ入れる（DLAMI には通常入っている）
 if ! command -v aws >/dev/null 2>&1; then
-  apt-get update -y
+  apt-get update --error-on=any
   apt-get install -y awscli unzip curl
 fi
 

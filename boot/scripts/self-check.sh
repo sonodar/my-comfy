@@ -15,14 +15,19 @@ exec >> "$LOG" 2>&1
 echo "=== boot self-check start: $(date -Is) ==="
 
 FAILURES=""
+FAILURE_DETAILS=()
 warn() { echo "WARN: $1"; }
-fail() { echo "FAIL: $1"; FAILURES="$FAILURES $1"; }
+fail() {
+  echo "FAIL: $1"
+  FAILURES="$FAILURES $1"
+  FAILURE_DETAILS+=("$2")
+}
 
 # --- GPU ---
 if nvidia-smi >/dev/null 2>&1; then
   echo "gpu: ok ($(nvidia-smi --query-gpu=name --format=csv,noheader | head -1))"
 else
-  fail "gpu-not-visible"
+  fail "gpu-not-visible" "GPU を認識できません。"
 fi
 
 # --- インスタンスストア ---
@@ -32,10 +37,10 @@ if mountpoint -q "$STORE_PATH"; then
   if echo "check" > "$TEST_FILE" && [ "$(cat "$TEST_FILE")" = "check" ] && rm -f "$TEST_FILE"; then
     echo "instance-store: ok ($STORE_PATH)"
   else
-    fail "instance-store-rw"
+    fail "instance-store-rw" "インスタンスストアに読み書きできません。"
   fi
 else
-  fail "instance-store-not-mounted"
+  fail "instance-store-not-mounted" "インスタンスストアをマウントできていません。"
 fi
 
 # --- S3 Files ---
@@ -47,10 +52,10 @@ if mountpoint -q "$S3_PATH"; then
     echo "s3files: ok ($S3_PATH, posix rw)"
     S3_OK=1
   else
-    fail "s3files-rw"
+    fail "s3files-rw" "S3 Files に読み書きできません。"
   fi
 else
-  fail "s3files-not-mounted"
+  fail "s3files-not-mounted" "S3 Files をマウントできていません。"
 fi
 
 # S3 API での可視確認（警告のみ。反映遅延のため）
@@ -77,7 +82,7 @@ for i in $(seq 1 60); do
   sleep 5
 done
 if [ "$COMFYUI_OK" = "0" ]; then
-  fail "comfyui-no-response"
+  fail "comfyui-no-response" "ComfyUI から応答がありません。"
 fi
 
 # --- 結果 ---
@@ -91,12 +96,22 @@ cat > "$RESULT" <<EOF
 {"status": "$STATUS", "failures": "$FAILURES", "host": "$(hostname)", "time": "$(date -Is)"}
 EOF
 
-MESSAGE="mycomfy boot check: status=$STATUS failures=[$FAILURES] host=$(hostname) time=$(date -Is)"
-echo "$MESSAGE"
-
 if [ -n "${NOTIFY_TOPIC_ARN:-}" ]; then
-  aws sns publish --topic-arn "$NOTIFY_TOPIC_ARN" \
-    --subject "mycomfy boot check: $STATUS" \
+  NOTIFIED_AT="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')"
+  if [ "$STATUS" = "ok" ]; then
+    SUBJECT="mycomfy の起動チェックが完了しました"
+  else
+    SUBJECT="mycomfy の起動チェックに失敗しました"
+  fi
+  MESSAGE="$SUBJECT
+ホスト: $(hostname)
+時刻: $NOTIFIED_AT"
+  for detail in "${FAILURE_DETAILS[@]}"; do
+    MESSAGE="$MESSAGE
+$detail"
+  done
+  AWS_DEFAULT_REGION="$AWS_REGION" aws sns publish --topic-arn "$NOTIFY_TOPIC_ARN" \
+    --subject "$SUBJECT" \
     --message "$MESSAGE" || echo "WARN: sns publish failed"
 fi
 
