@@ -13,10 +13,11 @@ instance_type = "g6e.xlarge"
 
 notify_topic_arn = "arn:aws:sns:ap-northeast-1:000000000000:notify-me-topic"
 
-# Tailscale の認証キーは tfvars には書かない。SSM パラメータ /mycomfy/tailscale-auth-key の
-# 器は Terraform が作る（値はダミー）ので、apply の後に AWS アプリやコンソールから値を
-# Reusable かつ Ephemeral で発行した認証キーに差し替えること
-# （Ephemeral のマシンはオフラインで tailnet から自動削除される）。
+# Tailscale の認証キーは tfvars には書かない。apply のときに環境変数で渡すこと：
+#   TF_VAR_tailscale_auth_key="tskey-auth-..." terraform apply
+# value_wo で SSM パラメータ /mycomfy/tailscale-auth-key に書かれ、tfstate には残らない。
+# キーは Reusable かつ Ephemeral で発行すること（Ephemeral のマシンはオフラインで
+# tailnet から自動削除される）。ローテーション時は ssm_value_version を上げて再 apply する。
 # 認証キーは新規インスタンスの参加登録に使う。この構成では作り直しのたびに登録が発生するので
 # 実質は起動のたびに要る。期限（既定90日）が切れると新しいインスタンスの登録が失敗するため、
 # その場合は新しいキーを発行して値だけ差し替える。

@@ -59,3 +59,16 @@ variable "bucket_name_prefix" {
   type        = string
   default     = "mycomfy"
 }
+
+variable "tailscale_auth_key" {
+  description = "Tailscale 認証キー（Reusable + Ephemeral で発行したもの）。value_wo で渡すため tfstate には残らない。未設定ならプレースホルダで作られ、実値は後から AWS CLI で上書きできる"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "ssm_value_version" {
+  description = "write-only な SSM の値（value_wo_version）のバージョンカウンタ。tailscale_auth_key を変えたらインクリメントして apply すること"
+  type        = number
+  default     = 1
+}

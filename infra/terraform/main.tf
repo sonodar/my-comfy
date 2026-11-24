@@ -10,15 +10,15 @@ data "aws_vpc" "selected" {
 locals {
   bucket_name = "${var.bucket_name_prefix}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
   # Tailscale 認証キーを入れる SSM パラメータの名前（固定）。
-  # パラメータの器（SecureString、暗号化キーは既定の aws/ssm）は Terraform が作り、
-  # 値（Reusable で発行した認証キー）は apply の後に Terraform の外で差し替える。
+  # パラメータ（SecureString、暗号化キーは既定の aws/ssm）は Terraform が作り、
+  # 値（Reusable で発行した認証キー）は value_wo で渡す（aws_ssm_parameter.tailscale_auth_key）。
   # 認証キーは新規インスタンスの参加登録に使う。この構成ではインスタンスを作り直すたびに
   # 登録が発生する（同じインスタンスの停止→起動では再登録しない）ため、実質は起動のたびに要る。
   # キーは Reusable かつ Ephemeral で発行すること（Ephemeral のマシンはオフラインになると
   # tailnet から自動で消えるので、作り直しても管理画面に残骸が溜まらない）。
   # キー自体の期限（既定90日）が切れても登録済みマシンの接続には影響しないが、新しい
   # インスタンスを作るときに切れていたら登録が失敗する。その場合は新しいキーを発行して
-  # このパラメータの値を差し替える（コード変更・apply は不要）。
+  # 値を差し替える（変数を設定し ssm_value_version を上げて apply、または CLI で直接上書き）。
   tailscale_auth_key_parameter = "/${var.project}/tailscale-auth-key"
 }
 
@@ -252,18 +252,16 @@ resource "aws_iam_role_policy" "instance_notify" {
   })
 }
 
-# パラメータの器だけを Terraform で作る。値はダミーで、実キーは Terraform の外で
-# （AWS アプリやコンソールから）差し替える。ignore_changes により、差し替え後の値が
-# tfstate に取り込まれることはない
+# 実キーは write-only の value_wo で渡すため、tfstate や plan には残らない（notify-me と同じ方式）。
+# 変数を設定して apply すればその値が書かれる。ローテーション時は ssm_value_version を上げる。
+# 変数未設定ならプレースホルダで作られ、後から aws ssm put-parameter --overwrite で実値を
+# 書いても、Terraform は value_wo を読み戻さないため上書きされない
 resource "aws_ssm_parameter" "tailscale_auth_key" {
-  name        = local.tailscale_auth_key_parameter
-  description = "Tailscale auth key for instance registration (the value is set outside Terraform)"
-  type        = "SecureString"
-  value       = "placeholder-set-the-real-key-outside-terraform"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
+  name             = local.tailscale_auth_key_parameter
+  description      = "Tailscale auth key for instance registration"
+  type             = "SecureString"
+  value_wo         = coalesce(var.tailscale_auth_key, "REPLACE_ME")
+  value_wo_version = var.ssm_value_version
 }
 
 resource "aws_iam_role_policy" "instance_tailscale_key" {
