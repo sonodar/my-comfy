@@ -1,0 +1,28 @@
+# モデルの実ファイルは S3 に置く。リポジトリには入れない
+*.safetensors
+*.gguf
+*.ckpt
+*.pt
+*.pth
+models/files/
+
+# バンドルの生成物
+bundle/dist/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfplan
+terraform.tfvars
+!terraform.tfvars.example
+
+# Python (uv)
+.venv/
+__pycache__/
+*.py[cod]
+
+# 秘密情報・個人値（値は SSM / 環境側で管理する）
+.env
+*.env
+!*.env.example

@@ -1,0 +1,11 @@
+[Unit]
+Description=mycomfy boot self-check
+After=comfyui.service
+Wants=comfyui.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/mycomfy/boot/scripts/self-check.sh
+
+[Install]
+WantedBy=multi-user.target
