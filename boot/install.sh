@@ -27,6 +27,27 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update --error-on=any
 apt-get install -y git curl unzip nfs-common
 
+# --- Tailscale（アクセス経路。後の工程が失敗しても SSH で入れるよう、早い段階で参加させる） ---
+INSTALL_STAGE="Tailscale の導入"
+. /etc/os-release
+TAILSCALE_KEYRING="/usr/share/keyrings/tailscale-archive-keyring.gpg"
+curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$VERSION_CODENAME.noarmor.gpg" \
+  -o "$TAILSCALE_KEYRING"
+chmod a+r "$TAILSCALE_KEYRING"
+printf 'deb [signed-by=%s] https://pkgs.tailscale.com/stable/ubuntu %s main\n' \
+  "$TAILSCALE_KEYRING" "$VERSION_CODENAME" \
+  > /etc/apt/sources.list.d/tailscale.list
+apt-get update --error-on=any
+apt-get install -y tailscale
+systemctl enable --now tailscaled
+# 認証キーは SSM パラメータストア（SecureString）から実行時に取得する。
+# user-data や tfstate にキーを残さないための形。登録後はマシン自身の鍵で接続する
+TAILSCALE_AUTH_KEY="$(aws ssm get-parameter \
+  --name "$TAILSCALE_AUTH_KEY_PARAMETER" --with-decryption \
+  --query Parameter.Value --output text --region "$AWS_REGION")"
+tailscale up --auth-key "$TAILSCALE_AUTH_KEY" --hostname "$PROJECT_NAME" --timeout 120s
+unset TAILSCALE_AUTH_KEY
+
 INSTALL_STAGE="S3 Files クライアントの導入"
 . /etc/os-release
 EFS_UTILS_REPO="https://amazon-efs-utils.aws.com"

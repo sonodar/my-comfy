@@ -9,6 +9,10 @@ data "aws_vpc" "selected" {
 
 locals {
   bucket_name = "${var.bucket_name_prefix}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  # Tailscale 認証キーを入れる SSM パラメータの名前（固定）。
+  # 中身は Reusable で発行した認証キー、タイプは SecureString、暗号化キーは既定の aws/ssm で作ること
+  # （カスタマーマネージドキーだとインスタンス側に kms:Decrypt が別途必要になる）。
+  tailscale_auth_key_parameter = "/mycomfy/tailscale-auth-key"
 }
 
 # --- S3 バケット（成果物置き場。S3 Files のファイルシステムもこのバケットに付く） ---
@@ -164,6 +168,15 @@ resource "aws_vpc_security_group_egress_rule" "compute_https" {
   ip_protocol       = "tcp"
 }
 
+resource "aws_vpc_security_group_egress_rule" "compute_tailscale" {
+  description       = "Tailscale direct connection (WireGuard)"
+  security_group_id = aws_security_group.compute.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 41641
+  to_port           = 41641
+  ip_protocol       = "udp"
+}
+
 # SG 同士を参照するルールは、相互参照の循環を避けるため単独リソースで定義する
 resource "aws_vpc_security_group_ingress_rule" "s3files_nfs_from_compute" {
   description                  = "NFS from compute"
@@ -228,6 +241,20 @@ resource "aws_iam_role_policy" "instance_notify" {
       Effect   = "Allow"
       Action   = ["sns:Publish"]
       Resource = var.notify_topic_arn
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "instance_tailscale_key" {
+  name = "tailscale-key-read"
+  role = aws_iam_role.instance.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter"]
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.tailscale_auth_key_parameter}"
     }]
   })
 }

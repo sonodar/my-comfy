@@ -13,4 +13,8 @@ instance_type = "g6e.xlarge"
 
 notify_topic_arn = "arn:aws:sns:ap-northeast-1:000000000000:notify-me-topic"
 
+# Tailscale の認証キーは tfvars には書かない。SSM パラメータストアに
+# 名前 /mycomfy/tailscale-auth-key、タイプ SecureString、暗号化キーは既定の aws/ssm で
+# パラメータを作成し、値に Reusable で発行した認証キーを入れておくこと（main.tf の locals と対応）。
+
 # key_name = "my-key"

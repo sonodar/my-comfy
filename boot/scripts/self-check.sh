@@ -30,6 +30,22 @@ else
   fail "gpu-not-visible" "GPU を認識できません。"
 fi
 
+# --- Tailscale（再起動直後は接続完了まで時間がかかるためリトライする） ---
+TAILSCALE_OK=0
+for i in $(seq 1 12); do
+  if command -v tailscale >/dev/null 2>&1 \
+    && tailscale status --json 2>/dev/null | grep -q '"BackendState": "Running"'; then
+    TAILSCALE_OK=1
+    break
+  fi
+  sleep 5
+done
+if [ "$TAILSCALE_OK" = "1" ]; then
+  echo "tailscale: ok ($(tailscale ip -4 2>/dev/null | head -1))"
+else
+  fail "tailscale-not-connected" "Tailscale に接続できていません。"
+fi
+
 # --- インスタンスストア ---
 STORE_PATH="${INSTANCE_STORE_PATH:-/mnt/instance-store}"
 if mountpoint -q "$STORE_PATH"; then
