@@ -43,7 +43,7 @@ done
 if [ "$TAILSCALE_OK" = "1" ]; then
   echo "tailscale: ok ($(tailscale ip -4 2>/dev/null | head -1))"
 else
-  fail "tailscale-not-connected" "Tailscale に接続できていません。"
+  fail "tailscale-not-connected" "Tailscale に接続できていません（登録済みマシンで起きた場合は、マシンの鍵の期限切れの可能性があります。管理画面でマシンの状態を確認してください）。"
 fi
 
 # --- インスタンスストア ---

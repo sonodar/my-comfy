@@ -12,6 +12,10 @@ record_install_failure() {
     printf '%s\n' "$INSTALL_STAGE" > /var/log/mycomfy/install-failure
   fi
 }
+# 失敗通知に「対処」を併記したい工程用。user-data 側の通知組み立てが拾う
+write_install_failure_hint() {
+  printf '%s\n' "$1" > /var/log/mycomfy/install-failure-hint
+}
 trap 'record_install_failure "$?"' EXIT
 mkdir -p /var/log/mycomfy /etc/mycomfy
 exec >> "$LOG" 2>&1
@@ -44,10 +48,18 @@ systemctl enable --now tailscaled
 # user-data や tfstate にキーを残さないための形。登録後はマシン自身の鍵で接続する。
 # この構成ではインスタンスを作り直すたびに登録が走る。キーの期限（既定90日）が切れていると
 # 登録が失敗する（工程名つきで通知される）。その場合は新しいキーを発行してパラメータの値を差し替える
-TAILSCALE_AUTH_KEY="$(aws ssm get-parameter \
+INSTALL_STAGE="Tailscale 認証キーの取得"
+if ! TAILSCALE_AUTH_KEY="$(aws ssm get-parameter \
   --name "$TAILSCALE_AUTH_KEY_PARAMETER" --with-decryption \
-  --query Parameter.Value --output text --region "$AWS_REGION")"
-tailscale up --auth-key "$TAILSCALE_AUTH_KEY" --hostname "$PROJECT_NAME" --timeout 120s
+  --query Parameter.Value --output text --region "$AWS_REGION")"; then
+  write_install_failure_hint "SSM パラメータ $TAILSCALE_AUTH_KEY_PARAMETER が存在しないか、読み取れませんでした。パラメータを作成済みか確認してください"
+  exit 1
+fi
+INSTALL_STAGE="Tailscale の参加登録"
+if ! tailscale up --auth-key "$TAILSCALE_AUTH_KEY" --hostname "$PROJECT_NAME" --timeout 120s; then
+  write_install_failure_hint "認証キーの期限切れ・無効の可能性があります。新しいキー（Reusable + Ephemeral）を発行し、SSM パラメータ $TAILSCALE_AUTH_KEY_PARAMETER の値を差し替えてから、インスタンスを作り直してください"
+  exit 1
+fi
 unset TAILSCALE_AUTH_KEY
 
 INSTALL_STAGE="S3 Files クライアントの導入"

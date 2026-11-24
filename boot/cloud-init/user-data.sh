@@ -39,10 +39,14 @@ notify_user_data_failure() {
   if [ -s /var/log/mycomfy/install-failure ]; then
     detail="失敗した工程: $(cat /var/log/mycomfy/install-failure)。ログ: /var/log/mycomfy/install.log。終了コード $exit_status"
   fi
+  if [ -s /var/log/mycomfy/install-failure-hint ]; then
+    detail="$detail
+対処: $(cat /var/log/mycomfy/install-failure-hint)"
+  fi
   bash /opt/mycomfy/boot/scripts/notify-failure.sh 初回セットアップ "$detail" || true
 }
 trap 'notify_user_data_failure "$?" "$LINENO"' ERR
-rm -f /var/log/mycomfy/install-failure
+rm -f /var/log/mycomfy/install-failure /var/log/mycomfy/install-failure-hint
 
 cat > /etc/systemd/system/mycomfy-notify-failure@.service <<'NOTIFY_UNIT'
 ${notify_failure_unit}
