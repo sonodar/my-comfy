@@ -16,5 +16,9 @@ notify_topic_arn = "arn:aws:sns:ap-northeast-1:000000000000:notify-me-topic"
 # Tailscale の認証キーは tfvars には書かない。SSM パラメータストアに
 # 名前 /mycomfy/tailscale-auth-key、タイプ SecureString、暗号化キーは既定の aws/ssm で
 # パラメータを作成し、値に Reusable で発行した認証キーを入れておくこと（main.tf の locals と対応）。
+# 認証キーは新規インスタンスの参加登録にのみ使う。期限（既定90日）が切れても登録済みマシンは
+# 切断されない。新しいインスタンスを作るときに切れていたら、新しいキーを発行して値だけ差し替える。
+# 別途、初回登録後に Tailscale 管理画面でマシン mycomfy の key expiry を無効化しておくこと
+# （マシン側の鍵の期限、既定180日が切れるとそのマシンの接続が切れるため）。
 
 # key_name = "my-key"

@@ -12,6 +12,9 @@ locals {
   # Tailscale 認証キーを入れる SSM パラメータの名前（固定）。
   # 中身は Reusable で発行した認証キー、タイプは SecureString、暗号化キーは既定の aws/ssm で作ること
   # （カスタマーマネージドキーだとインスタンス側に kms:Decrypt が別途必要になる）。
+  # 認証キーは新規インスタンスの参加登録にのみ使う。キー自体の期限（既定90日）が切れても
+  # 登録済みマシンの接続には影響しない。新しいインスタンスを作るときに切れていたら、
+  # 新しいキーを発行してこのパラメータの値を差し替える（コード変更・apply は不要）。
   tailscale_auth_key_parameter = "/mycomfy/tailscale-auth-key"
 }
 
