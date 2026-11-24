@@ -11,7 +11,7 @@ BOOT_BUCKET="${boot_bucket}"
 BOOT_KEY="${boot_key}"
 AWS_REGION="${aws_region}"
 
-mkdir -p /var/log/mycomfy /opt/mycomfy /etc/mycomfy
+mkdir -p /var/log/mycomfy /opt/mycomfy/boot/scripts /etc/mycomfy
 
 # 個人値を env ファイルに落とす（install.sh と各スクリプトが読む）
 cat > /etc/mycomfy/env <<'ENVEOF'
@@ -28,6 +28,15 @@ cp /etc/mycomfy/env /etc/mycomfy/notify.env
 
 export AWS_DEFAULT_REGION="$AWS_REGION"
 
+cat > /opt/mycomfy/boot/scripts/notify-failure.sh <<'NOTIFY_SCRIPT'
+${notify_failure_script}
+NOTIFY_SCRIPT
+trap 'bash /opt/mycomfy/boot/scripts/notify-failure.sh cloud-init-user-data "line=$LINENO exit=$?" || true' ERR
+
+cat > /etc/systemd/system/mycomfy-notify-failure@.service <<'NOTIFY_UNIT'
+${notify_failure_unit}
+NOTIFY_UNIT
+
 # aws cli が無ければ入れる（DLAMI には通常入っている）
 if ! command -v aws >/dev/null 2>&1; then
   apt-get update -y
@@ -35,7 +44,9 @@ if ! command -v aws >/dev/null 2>&1; then
 fi
 
 aws s3 cp "s3://$BOOT_BUCKET/$BOOT_KEY" /tmp/mycomfy-boot.zip
-unzip -o /tmp/mycomfy-boot.zip -d /opt/mycomfy
+unzip -o /tmp/mycomfy-boot.zip \
+  -x scripts/notify-failure.sh systemd/mycomfy-notify-failure@.service \
+  -d /opt/mycomfy/boot
 chmod +x /opt/mycomfy/boot/install.sh
 
 bash /opt/mycomfy/boot/install.sh

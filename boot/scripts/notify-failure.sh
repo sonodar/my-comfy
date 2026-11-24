@@ -13,12 +13,17 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 UNIT="${1:-unknown-unit}"
+DETAIL="${2:-}"
 HOST="$(hostname)"
-MESSAGE="mycomfy boot failure: unit=${UNIT} host=${HOST} time=$(date -Is)"
+MESSAGE="mycomfy boot failure: unit=${UNIT} host=${HOST} time=$(date -Is)${DETAIL:+ $DETAIL}"
 
 if [ -z "${NOTIFY_TOPIC_ARN:-}" ]; then
   echo "NOTIFY_TOPIC_ARN is not set; cannot notify" >&2
   exit 1
+fi
+
+if [ -n "${AWS_REGION:-}" ]; then
+  export AWS_DEFAULT_REGION="$AWS_REGION"
 fi
 
 aws sns publish \

@@ -2,13 +2,13 @@
 
 起動まわり一式。役割分担は以下のとおり。
 
-- `cloud-init/`：初回起動時だけ走る user-data（`user-data.sh`）。S3 から boot/ バンドルを取って `install.sh` を呼ぶだけの薄いもの。
+- `cloud-init/`：初回起動時に失敗通知を先に設定し、S3 から起動用バンドルを取得して `install.sh` を呼ぶ。
 - `install.sh`：初回セットアップ。パッケージ導入、ComfyUI 導入（版固定）、systemd ユニットの配置と有効化、起動まで。
 - `systemd/`：起動のたびに動くユニット。インスタンスストアの初期化と S3 Files マウント（`mycomfy-init.service`）、ComfyUI 起動（`comfyui.service`）、自己チェック（`mycomfy-self-check.service`）。
   - cloud-init の user-data は停止→起動では再実行されないため、毎回必要な処理は必ずこちらに置く。
 - `scripts/`：ユニットから呼ばれる実スクリプト（マウント、自己チェック、失敗通知）。
 
-起動失敗時は systemd の OnFailure から `scripts/notify-failure.sh` を呼び、notify-me の SNS トピックへ publish する（LINE への配送は notify-me 側の責務）。自己チェックは成否どちらも SNS へ送る。
+user-data が途中で失敗したときと、systemd がサービスの `OnFailure` を実行したときは、同じ通知スクリプトから notify-me の SNS トピックへ送る。自己チェックは成否どちらも SNS へ送る。
 
 ## マイルストーン 1（PoC）の範囲
 
