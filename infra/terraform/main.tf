@@ -19,7 +19,7 @@ locals {
   # キー自体の期限（既定90日）が切れても登録済みマシンの接続には影響しないが、新しい
   # インスタンスを作るときに切れていたら登録が失敗する。その場合は新しいキーを発行して
   # このパラメータの値を差し替える（コード変更・apply は不要）。
-  tailscale_auth_key_parameter = "/mycomfy/tailscale-auth-key"
+  tailscale_auth_key_parameter = "/${var.project}/tailscale-auth-key"
 }
 
 # --- S3 バケット（成果物置き場。S3 Files のファイルシステムもこのバケットに付く） ---
@@ -257,7 +257,7 @@ resource "aws_iam_role_policy" "instance_notify" {
 # tfstate に取り込まれることはない
 resource "aws_ssm_parameter" "tailscale_auth_key" {
   name        = local.tailscale_auth_key_parameter
-  description = "mycomfy の Tailscale 認証キー。値は Terraform の外で設定すること"
+  description = "Tailscale auth key for instance registration (the value is set outside Terraform)"
   type        = "SecureString"
   value       = "placeholder-set-the-real-key-outside-terraform"
 
