@@ -138,14 +138,8 @@ resource "aws_security_group" "s3files" {
   }
 }
 
-locals {
-  # マウントターゲットは AZ 分だけ先に作っておく（作成は無料）。
-  # インスタンスが使うサブネットは var.subnet_id の1つだけで、AZ を切り替えても作り直しにならない。
-  mount_subnet_ids = length(var.subnet_ids) > 0 ? var.subnet_ids : [var.subnet_id]
-}
-
 resource "aws_s3files_mount_target" "this" {
-  for_each = toset(local.mount_subnet_ids)
+  for_each = toset(var.subnet_ids)
 
   file_system_id  = aws_s3files_file_system.this.id
   subnet_id       = each.value

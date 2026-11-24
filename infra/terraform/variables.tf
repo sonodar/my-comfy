@@ -21,9 +21,8 @@ variable "subnet_id" {
 }
 
 variable "subnet_ids" {
-  description = "S3 Files マウントターゲットを作るサブネットの ID 一覧（AZ ごとに1つ、a/c/d 分）。空なら subnet_id のみ"
+  description = "S3 Files マウントターゲットを作るサブネットの ID 一覧（AZ ごとに1つ、a/c/d 分）。subnet_id と重複して指定する"
   type        = list(string)
-  default     = []
 }
 
 variable "instance_type" {
