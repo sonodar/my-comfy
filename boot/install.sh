@@ -42,8 +42,8 @@ apt-get install -y tailscale
 systemctl enable --now tailscaled
 # 認証キーは SSM パラメータストア（SecureString）から実行時に取得する。
 # user-data や tfstate にキーを残さないための形。登録後はマシン自身の鍵で接続する。
-# キーの期限（既定90日）が切れると新規インスタンスの登録だけが失敗する（登録済みマシンは
-# 切断されない）。その場合は新しいキーを発行してパラメータの値を差し替える
+# この構成ではインスタンスを作り直すたびに登録が走る。キーの期限（既定90日）が切れていると
+# 登録が失敗する（工程名つきで通知される）。その場合は新しいキーを発行してパラメータの値を差し替える
 TAILSCALE_AUTH_KEY="$(aws ssm get-parameter \
   --name "$TAILSCALE_AUTH_KEY_PARAMETER" --with-decryption \
   --query Parameter.Value --output text --region "$AWS_REGION")"
