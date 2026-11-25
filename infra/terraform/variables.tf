@@ -61,14 +61,14 @@ variable "bucket_name_prefix" {
 }
 
 variable "tailscale_auth_key" {
-  description = "Tailscale 認証キー（Reusable + Ephemeral で発行したもの）。value_wo で渡すため tfstate には残らない。未設定ならプレースホルダで作られ、実値は後から AWS CLI で上書きできる"
+  description = "Tailscale 認証キー（Reusable + Ephemeral で発行したもの）。未設定ならプレースホルダで作られ、実値は後から AWS CLI で上書きできる"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "ssm_value_version" {
-  description = "write-only な SSM の値（value_wo_version）のバージョンカウンタ。tailscale_auth_key を変えたらインクリメントして apply すること"
+variable "tailscale_auth_key_version" {
+  description = "Tailscale 認証キーを Terraform で更新するときに増やす番号"
   type        = number
-  default     = 1
+  nullable    = false
 }

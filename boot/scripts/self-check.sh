@@ -34,7 +34,7 @@ fi
 TAILSCALE_OK=0
 for i in $(seq 1 12); do
   if command -v tailscale >/dev/null 2>&1 \
-    && tailscale status --json 2>/dev/null | grep -q '"BackendState": "Running"'; then
+    && tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null; then
     TAILSCALE_OK=1
     break
   fi
