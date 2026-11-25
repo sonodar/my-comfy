@@ -15,12 +15,17 @@ exec >> "$LOG" 2>&1
 echo "=== boot self-check start: $(date -Is) ==="
 
 FAILURES=""
-FAILURE_DETAILS=()
-warn() { echo "WARN: $1"; }
+NOTIFY_DETAILS=()
+HAS_WARNINGS=0
+warn() {
+  echo "WARN: $1"
+  HAS_WARNINGS=1
+  NOTIFY_DETAILS+=("⚠️ $2")
+}
 fail() {
   echo "FAIL: $1"
   FAILURES="$FAILURES $1"
-  FAILURE_DETAILS+=("$2")
+  NOTIFY_DETAILS+=("❌ $2")
 }
 
 # --- GPU ---
@@ -82,7 +87,7 @@ if [ "$S3_OK" = "1" ]; then
   if aws s3 ls "s3://$BUCKET_NAME/.mycomfy-boot-check-visible" >/dev/null 2>&1; then
     echo "s3-visible: ok"
   else
-    warn "s3-visible: not yet visible via S3 API (sync delay; not fatal)"
+    warn "s3-visible: not yet visible via S3 API (sync delay; not fatal)" "S3 API から確認用ファイルをまだ参照できません。S3 Files からの反映に時間がかかっている可能性があります。"
   fi
   rm -f "$MARKER"
 fi
@@ -112,23 +117,37 @@ cat > "$RESULT" <<EOF
 {"status": "$STATUS", "failures": "$FAILURES", "host": "$(hostname)", "time": "$(date -Is)"}
 EOF
 
+if [ "$STATUS" = ok ]; then
+  printf '%s\n' ready > /run/mycomfy-boot-status || exit 1
+fi
+
 if [ -n "${NOTIFY_TOPIC_ARN:-}" ]; then
-  NOTIFIED_AT="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')"
-  if [ "$STATUS" = "ok" ]; then
-    SUBJECT="mycomfy の起動チェックが完了しました"
+  if [ "$STATUS" = "failed" ]; then
+    MESSAGE="mycomfy の起動チェックに失敗しました"
+    LEVEL=error
   else
-    SUBJECT="mycomfy の起動チェックに失敗しました"
+    MESSAGE="mycomfy の起動チェックが完了しました"
+    LEVEL=info
+    if [ "$HAS_WARNINGS" -eq 1 ]; then
+      LEVEL=warn
+    fi
   fi
-  MESSAGE="$SUBJECT
+  NOTIFIED_AT="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %Z')"
+  MESSAGE="$MESSAGE
 ホスト: $(hostname)
 時刻: $NOTIFIED_AT"
-  for detail in "${FAILURE_DETAILS[@]}"; do
+  for detail in ${NOTIFY_DETAILS[@]+"${NOTIFY_DETAILS[@]}"}; do
     MESSAGE="$MESSAGE
 $detail"
   done
-  AWS_DEFAULT_REGION="$AWS_REGION" aws sns publish --topic-arn "$NOTIFY_TOPIC_ARN" \
-    --subject "$SUBJECT" \
-    --message "$MESSAGE" || echo "WARN: sns publish failed"
+  if NOTIFY_TOPIC_ARN="$NOTIFY_TOPIC_ARN" AWS_DEFAULT_REGION="$AWS_REGION" \
+    /usr/local/bin/notify.sh "$MESSAGE" "$LEVEL"; then
+    if [ "$STATUS" = failed ]; then
+      printf '%s\n' failure-notified > /run/mycomfy-boot-status
+    fi
+  else
+    echo "WARN: sns publish failed"
+  fi
 fi
 
 echo "=== boot self-check end: $STATUS ==="
