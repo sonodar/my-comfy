@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.5.0"
+  # >= 1.11 is required for write-only arguments (value_wo).
+  required_version = ">= 1.11"
 
   required_providers {
     aws = {

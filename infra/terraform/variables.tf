@@ -16,12 +16,12 @@ variable "vpc_id" {
 }
 
 variable "subnet_id" {
-  description = "既存パブリックサブネットの ID（インスタンスが実際に使うのはこの1つだけ。インターネットに出られること）"
+  description = "起動テンプレートから直接起動するときに使うパブリックサブネットの ID"
   type        = string
 }
 
 variable "subnet_ids" {
-  description = "S3 Files マウントターゲットを作るサブネットの ID 一覧（AZ ごとに1つ、a/c/d 分）。subnet_id と重複して指定する"
+  description = "S3 Files のマウントターゲットと EC2 Fleet の起動候補に使うパブリックサブネットの ID 一覧（AZ ごとに1つ）"
   type        = list(string)
 }
 
@@ -58,4 +58,17 @@ variable "bucket_name_prefix" {
   description = "S3 バケット名の接頭辞。後ろにアカウント ID とリージョンが付く"
   type        = string
   default     = "mycomfy"
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale 認証キー（Reusable + Ephemeral で発行したもの）。未設定ならプレースホルダで作られ、実値は後から AWS CLI で上書きできる"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "tailscale_auth_key_version" {
+  description = "Tailscale 認証キーを Terraform で更新するときに増やす番号"
+  type        = number
+  nullable    = false
 }

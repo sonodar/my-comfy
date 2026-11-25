@@ -9,6 +9,15 @@ data "aws_vpc" "selected" {
 
 locals {
   bucket_name = "${var.bucket_name_prefix}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  # Tailscale 認証キーを入れる SSM パラメータの名前（固定）。
+  # 認証キーは新規インスタンスの参加登録に使う。この構成ではインスタンスを作り直すたびに
+  # 登録が発生する（同じインスタンスの停止→起動では再登録しない）ため、実質は起動のたびに要る。
+  # キーは Reusable かつ Ephemeral で発行すること（Ephemeral のマシンはオフラインになると
+  # tailnet から自動で消えるので、作り直しても管理画面に残骸が溜まらない）。
+  # キー自体の期限（既定90日）が切れても登録済みマシンの接続には影響しないが、新しい
+  # インスタンスを作るときに切れていたら登録が失敗する。その場合は新しいキーを発行して
+  # 値を差し替える（変数を設定し tailscale_auth_key_version を上げて apply、または CLI で直接上書き）。
+  tailscale_auth_key_parameter = "/mycomfy/tailscale-auth-key"
 }
 
 # --- S3 バケット（成果物置き場。S3 Files のファイルシステムもこのバケットに付く） ---
@@ -164,6 +173,15 @@ resource "aws_vpc_security_group_egress_rule" "compute_https" {
   ip_protocol       = "tcp"
 }
 
+resource "aws_vpc_security_group_egress_rule" "compute_tailscale" {
+  description       = "Tailscale direct connection (WireGuard)"
+  security_group_id = aws_security_group.compute.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 0
+  to_port           = 65535
+  ip_protocol       = "udp"
+}
+
 # SG 同士を参照するルールは、相互参照の循環を避けるため単独リソースで定義する
 resource "aws_vpc_security_group_ingress_rule" "s3files_nfs_from_compute" {
   description                  = "NFS from compute"
@@ -228,6 +246,30 @@ resource "aws_iam_role_policy" "instance_notify" {
       Effect   = "Allow"
       Action   = ["sns:Publish"]
       Resource = var.notify_topic_arn
+    }]
+  })
+}
+
+# 変数を設定して apply すればその値が書かれる。ローテーション時は tailscale_auth_key_version を上げる。
+# 変数未設定ならプレースホルダで作られる。後から aws ssm put-parameter --overwrite で実値を書ける。
+resource "aws_ssm_parameter" "tailscale_auth_key" {
+  name             = local.tailscale_auth_key_parameter
+  description      = "Tailscale auth key for instance registration"
+  type             = "SecureString"
+  value_wo         = coalesce(var.tailscale_auth_key, "REPLACE_ME")
+  value_wo_version = var.tailscale_auth_key_version
+}
+
+resource "aws_iam_role_policy" "instance_tailscale_key" {
+  name = "tailscale-key-read"
+  role = aws_iam_role.instance.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter"]
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.tailscale_auth_key_parameter}"
     }]
   })
 }
