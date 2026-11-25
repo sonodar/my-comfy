@@ -3,12 +3,11 @@
 起動まわり一式。役割分担は以下のとおり。
 
 - `cloud-init/`：初回起動時に失敗通知を先に設定し、S3 から起動用バンドルを取得して `install.sh` を呼ぶ。
-- `install.sh`：初回セットアップ。パッケージ導入、ComfyUI 導入（版固定）、systemd ユニットの配置と有効化、起動まで。
-- `systemd/`：起動のたびに動くユニット。インスタンスストアの初期化と S3 Files マウント（`mycomfy-init.service`）、ComfyUI 起動（`comfyui.service`）、自己チェック（`mycomfy-self-check.service`）。
-  - cloud-init の user-data は停止→起動では再実行されないため、毎回必要な処理は必ずこちらに置く。
-- `scripts/`：ユニットから呼ばれる実スクリプト（マウント、自己チェック、失敗通知）。
+- `install.sh`：初回セットアップ。必要なソフトウェアを導入し、ストレージをマウントしてから ComfyUI を起動し、自己チェックを実行する。
+- `systemd/`：ComfyUI のプロセスを管理する。
+- `scripts/`：初回セットアップから必要に応じて呼び出す。
 
-user-data が途中で失敗したときと、systemd がサービスの `OnFailure` を実行したときは、同じ通知スクリプトから notify-me の SNS トピックへ送る。自己チェックは成否どちらも SNS へ送る。
+初回セットアップの失敗は user-data が通知する。自己チェックは成否を通知し、失敗通知を送信済みなら user-data は同じ失敗を再送しない。自己チェックを通過したあとに ComfyUI が異常終了した場合は、`comfyui.service` が通知する。どれも `/usr/local/bin/notify.sh` から notify-me の SNS トピックへ送る。
 
 ## マイルストーン 1（PoC）の範囲
 
@@ -23,5 +22,5 @@ AMI によってデバイス名が変わるため、デバイス名を固定し�
 - **識別はハードウェア情報で行う**：`/dev/nvme*n1` を列挙し、`/sys/class/block/<dev>/device/model` に `Amazon EC2 NVMe Instance Storage` を含むデバイスが1台のときだけ処理を続ける。EBS は `Amazon Elastic Block Store` なので区別できる。`nvme1n1` のような番号の固定指定はしない（起動ごとに割り当てが変わりうる）。
 - **DLAMI がマウント済みなら再利用する**：`/opt/dlami/nvme` がインスタンスストア上にあることを確かめ、`/mnt/instance-store` にバインドマウントする。
 - **未初期化のデバイスだけフォーマットする**：単独のデバイスに既存のファイルシステムがあれば、そのまま `/mnt/instance-store` にマウントする。
-- **検証してから使う**：デバイスが見つからない、または容量が想定未満なら sync ユニットを失敗させ、OnFailure の通知に乗せる。あわせて `nvidia-smi` で GPU が見えることも確認する（AMI のドライバが GPU 世代に非対応なら、ここで失敗として通知する）。
+- **検証してから使う**：デバイスが見つからない場合はマウント処理を中断し、user-data から通知する。自己チェックでは `nvidia-smi` で GPU が見えることも確認し、認識できない場合はチェックの失敗として通知する。
 - 容量の検証は固定値ではなく `models/manifest.yaml` の合計サイズ＋余裕に対して行う。インスタンスストアが1台の構成では、この基準で容量を検証する。複数台の構成では検出時にエラーにする。

@@ -7,22 +7,15 @@ set -euo pipefail
 BOOT_DIR="/opt/mycomfy/boot"
 LOG="/var/log/mycomfy/install.log"
 INSTALL_STAGE="初期設定"
-TAILSCALE_AUTH_KEY_FILE=""
 finish_install() {
-  if [ -n "$TAILSCALE_AUTH_KEY_FILE" ] && ! rm -f -- "$TAILSCALE_AUTH_KEY_FILE"; then
-    printf '%s\n' 'Failed to remove the temporary Tailscale auth key file' >&2
-  fi
-  if [ "$1" -ne 0 ]; then
+  if [ "$1" -ne 0 ] && [ ! -s /var/log/mycomfy/install-failure ]; then
     printf '%s\n' "$INSTALL_STAGE" > /var/log/mycomfy/install-failure
   fi
-}
-# 失敗通知に「対処」を併記したい工程用。user-data 側の通知組み立てが拾う
-write_install_failure_hint() {
-  printf '%s\n' "$1" > /var/log/mycomfy/install-failure-hint
 }
 trap 'finish_install "$?"' EXIT
 mkdir -p /var/log/mycomfy /etc/mycomfy
 exec >> "$LOG" 2>&1
+rm -f /var/log/mycomfy/install-failure /var/log/mycomfy/install-failure-hint /run/mycomfy-boot-status
 
 echo "=== mycomfy install start: $(date -Is) ==="
 
@@ -37,49 +30,10 @@ apt-get install -y git curl unzip nfs-common jq
 
 # --- Tailscale（アクセス経路。後の工程が失敗しても SSH で入れるよう、早い段階で参加させる） ---
 INSTALL_STAGE="Tailscale の導入"
-. /etc/os-release
-TAILSCALE_KEYRING="/usr/share/keyrings/tailscale-archive-keyring.gpg"
-curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$VERSION_CODENAME.noarmor.gpg" \
-  -o "$TAILSCALE_KEYRING"
-chmod a+r "$TAILSCALE_KEYRING"
-printf 'deb [signed-by=%s] https://pkgs.tailscale.com/stable/ubuntu %s main\n' \
-  "$TAILSCALE_KEYRING" "$VERSION_CODENAME" \
-  > /etc/apt/sources.list.d/tailscale.list
-apt-get update --error-on=any
-apt-get install -y tailscale
-systemctl enable --now tailscaled
-# 認証キーは SSM パラメータストア（SecureString）から実行時に取得する。
-# user-data や tfstate にキーを残さないための形。登録後はマシン自身の鍵で接続する。
-# この構成ではインスタンスを作り直すたびに登録が走る。キーの期限（既定90日）が切れていると
-# 登録が失敗する（工程名つきで通知される）。その場合は新しいキーを発行してパラメータの値を差し替える
-INSTALL_STAGE="Tailscale 認証キーの取得"
-TAILSCALE_AUTH_KEY_FILE="$(mktemp /run/mycomfy-tailscale-auth.XXXXXX)"
-if ! aws ssm get-parameter \
-  --name "$TAILSCALE_AUTH_KEY_PARAMETER" --with-decryption \
-  --query Parameter.Value --output text --region "$AWS_REGION" > "$TAILSCALE_AUTH_KEY_FILE"; then
-  write_install_failure_hint "SSM パラメータ $TAILSCALE_AUTH_KEY_PARAMETER が存在しないか、読み取れませんでした。パラメータを作成済みか確認してください"
-  exit 1
-fi
-INSTALL_STAGE="Tailscale の参加登録"
-if ! tailscale up --auth-key "file:$TAILSCALE_AUTH_KEY_FILE" --hostname mycomfy --timeout 120s; then
-  write_install_failure_hint "認証キーの期限切れ・無効の可能性があります。新しいキー（Reusable + Ephemeral）を発行し、SSM パラメータ $TAILSCALE_AUTH_KEY_PARAMETER の値を差し替えてから、インスタンスを作り直してください"
-  exit 1
-fi
-rm -f -- "$TAILSCALE_AUTH_KEY_FILE"
-TAILSCALE_AUTH_KEY_FILE=""
+bash "$BOOT_DIR/scripts/join-tailscale.sh" "$AWS_REGION" "$TAILSCALE_AUTH_KEY_PARAMETER"
 
 INSTALL_STAGE="S3 Files クライアントの導入"
-. /etc/os-release
-EFS_UTILS_REPO="https://amazon-efs-utils.aws.com"
-EFS_UTILS_KEYRING="/usr/share/keyrings/efs-utils.gpg"
-curl -fsSL "$EFS_UTILS_REPO/efs-utils.gpg" -o "$EFS_UTILS_KEYRING"
-chmod a+r "$EFS_UTILS_KEYRING"
-printf 'deb [signed-by=%s] %s/repo/deb/%s/%s %s main\n' \
-  "$EFS_UTILS_KEYRING" "$EFS_UTILS_REPO" "$ID" "$VERSION_ID" "$VERSION_ID" \
-  > /etc/apt/sources.list.d/efs-utils.list
-apt-get update --error-on=any
-# amazon-efs-utils は mount -t s3files のヘルパを提供する（Ubuntu 24.04 の apt にある前提）
-apt-get install -y amazon-efs-utils
+bash "$BOOT_DIR/scripts/install-s3files-client.sh"
 
 # --- マウント ---
 INSTALL_STAGE="インスタンスストアのマウント"
@@ -89,32 +43,17 @@ bash "$BOOT_DIR/scripts/mount-s3files.sh"
 
 # --- ComfyUI（版固定。DLAMI の PyTorch 環境を使う） ---
 INSTALL_STAGE="ComfyUI の導入"
-PY="/opt/pytorch/bin/python"
-if [ ! -x "$PY" ]; then
-  echo "FATAL: $PY not found (DLAMI の PyTorch 環境が無い)" >&2
-  exit 1
-fi
-
-if [ ! -d /opt/ComfyUI ]; then
-  git clone --depth 1 --branch "$COMFYUI_VERSION" \
-    https://github.com/comfyanonymous/ComfyUI.git /opt/ComfyUI
-fi
-echo "ComfyUI commit: $(git -C /opt/ComfyUI rev-parse HEAD)"
-
-"$PY" -m pip install -r /opt/ComfyUI/requirements.txt
+bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
 
 # --- systemd ユニット配置 ---
 INSTALL_STAGE="systemd サービスの登録"
-cp "$BOOT_DIR/systemd/"*.service /etc/systemd/system/
+cp "$BOOT_DIR/systemd/comfyui.service" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable mycomfy-init.service comfyui.service mycomfy-self-check.service
 
 # --- 起動 ---
-INSTALL_STAGE="ストレージをマウントするサービスの起動"
-systemctl start mycomfy-init.service
 INSTALL_STAGE="ComfyUI の起動"
 systemctl start comfyui.service
 INSTALL_STAGE="起動時の自己チェック"
-systemctl start mycomfy-self-check.service
+bash "$BOOT_DIR/scripts/self-check.sh"
 
 echo "=== mycomfy install done: $(date -Is) ==="
