@@ -7,7 +7,7 @@ OnFailure=mycomfy-notify-failure@%n.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/ComfyUI
-ExecStart=/opt/pytorch/bin/python /opt/ComfyUI/main.py --listen 127.0.0.1 --port 8188
+ExecStart=/opt/pytorch/bin/python /opt/ComfyUI/main.py --listen 0.0.0.0 --port 8188
 Restart=on-failure
 RestartSec=10
 
