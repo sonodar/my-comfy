@@ -51,6 +51,17 @@ cat > /etc/systemd/system/mycomfy-notify-failure@.service <<'NOTIFY_UNIT'
 ${notify_failure_unit}
 NOTIFY_UNIT
 
+cat > /etc/apt/apt.conf.d/99mycomfy-disable-periodic-updates <<'APT_CONFIG'
+APT::Periodic::Enable "0";
+APT::Periodic::Update-Package-Lists "0";
+APT::Periodic::Unattended-Upgrade "0";
+APT_CONFIG
+for unit in apt-daily.timer apt-daily-upgrade.timer docker.socket docker.service containerd.service fwupd-refresh.timer; do
+  if ! systemctl mask --now "$unit"; then
+    printf '警告: %s を停止・無効化できませんでした。\n' "$unit" >&2
+  fi
+done
+
 for apt_sources in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
   if [ -f "$apt_sources" ]; then
     sed -i -E 's@http://(([^/[:space:]]+\.)?archive\.ubuntu\.com|security\.ubuntu\.com)/ubuntu@https://\1/ubuntu@g' "$apt_sources"
@@ -58,10 +69,27 @@ for apt_sources in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources;
 done
 
 # aws cli が無ければ入れる（DLAMI には通常入っている）
-if ! command -v aws >/dev/null 2>&1; then
+if ! command -v aws >/dev/null || ! command -v unzip >/dev/null || ! command -v curl >/dev/null; then
   apt-get update --error-on=any
   apt-get install -y awscli unzip curl
 fi
+
+echo 'CloudWatch Agent の設定を開始します。'
+touch /var/log/mycomfy/install.log /var/log/mycomfy/boot-check.log
+if [ ! -x /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl ]; then
+  (
+    agent_download_dir=$(mktemp -d)
+    trap 'rm -rf -- "$agent_download_dir"' EXIT
+    curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 --max-time 120 \
+      "https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/$(dpkg --print-architecture)/latest/amazon-cloudwatch-agent.deb" \
+      --output "$agent_download_dir/amazon-cloudwatch-agent.deb"
+    DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y \
+      "$agent_download_dir/amazon-cloudwatch-agent.deb"
+  )
+fi
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -s -c "ssm:${cloudwatch_agent_parameter}"
+systemctl is-active --quiet amazon-cloudwatch-agent.service
 
 aws s3 cp "s3://$BOOT_BUCKET/$BOOT_KEY" /tmp/mycomfy-boot.zip
 unzip -o /tmp/mycomfy-boot.zip \

@@ -46,15 +46,16 @@ resource "aws_launch_template" "this" {
   }
 
   user_data = base64encode(templatefile("${path.module}/../../boot/cloud-init/user-data.sh", {
-    boot_bucket           = aws_s3_bucket.this.bucket
-    boot_key              = aws_s3_object.boot_bundle.key
-    aws_region            = var.aws_region
-    notify_topic_arn      = var.notify_topic_arn
-    s3_files_id           = aws_s3files_file_system.this.id
-    comfyui_version       = var.comfyui_version
-    bucket_name           = aws_s3_bucket.this.bucket
-    notify_failure_script = file("${path.module}/../../boot/scripts/notify-failure.sh")
-    notify_failure_unit   = file("${path.module}/../../boot/systemd/mycomfy-notify-failure@.service")
+    boot_bucket                = aws_s3_bucket.this.bucket
+    boot_key                   = aws_s3_object.boot_bundle.key
+    aws_region                 = var.aws_region
+    notify_topic_arn           = var.notify_topic_arn
+    s3_files_id                = aws_s3files_file_system.this.id
+    comfyui_version            = var.comfyui_version
+    bucket_name                = aws_s3_bucket.this.bucket
+    notify_failure_script      = file("${path.module}/../../boot/scripts/notify-failure.sh")
+    notify_failure_unit        = file("${path.module}/../../boot/systemd/mycomfy-notify-failure@.service")
+    cloudwatch_agent_parameter = aws_ssm_parameter.cloudwatch_agent.name
   }))
 
   tag_specifications {
@@ -66,7 +67,11 @@ resource "aws_launch_template" "this" {
   }
 
   # マウントターゲットが出来てからでないと、起動したインスタンスが S3 Files を解決できない
-  depends_on = [aws_s3files_mount_target.this]
+  depends_on = [
+    aws_s3files_mount_target.this,
+    aws_iam_role_policy.instance_boot_logs,
+    aws_iam_role_policy_attachment.instance_ssm,
+  ]
 
   lifecycle {
     precondition {
