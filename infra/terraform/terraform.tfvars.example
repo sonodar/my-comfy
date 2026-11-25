@@ -3,8 +3,9 @@
 
 aws_region = "ap-northeast-1"
 vpc_id     = "vpc-xxxxxxxxxxxxxxxxx"
-subnet_id  = "subnet-xxxxxxxxxxxxxxxxx"
-# マウントターゲットを作る AZ 分（a/c/d）のサブネット。インスタンスが実際に使うのは subnet_id の1つだけ
+# 起動テンプレートから直接起動する場合に使うサブネット。subnet_ids の中から選ぶ。
+subnet_id = "subnet-xxxxxxxxxxxxxxxxx"
+# S3 Files のマウントターゲットを作り、Fleet の起動候補にも使う。AZ ごとに1つ指定する。
 subnet_ids = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyyyyyy", "subnet-zzzzzzzzzzzzzzzzz"]
 
 instance_type = "g6e.xlarge"

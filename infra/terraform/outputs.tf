@@ -8,6 +8,31 @@ output "launch_template_latest_version" {
   value       = aws_launch_template.this.latest_version
 }
 
+output "spot_fleet_config" {
+  description = "S3 Files のマウントターゲットがある AZ から Spot インスタンスを1台起動する EC2 Fleet 設定"
+  value = {
+    Type = "instant"
+    SpotOptions = {
+      AllocationStrategy = "capacity-optimized"
+    }
+    TargetCapacitySpecification = {
+      TotalTargetCapacity       = 1
+      DefaultTargetCapacityType = "spot"
+    }
+    LaunchTemplateConfigs = [{
+      LaunchTemplateSpecification = {
+        LaunchTemplateId = aws_launch_template.this.id
+        Version          = tostring(aws_launch_template.this.latest_version)
+      }
+      Overrides = [
+        for subnet_id in sort(keys(aws_s3files_mount_target.this)) : {
+          SubnetId = subnet_id
+        }
+      ]
+    }]
+  }
+}
+
 output "bucket_name" {
   description = "S3 バケット名（成果物置き場）"
   value       = aws_s3_bucket.this.bucket
