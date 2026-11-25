@@ -128,14 +128,13 @@ resource "aws_security_group" "s3files" {
   name_prefix = "${var.project}-s3files-"
   description = "S3 Files mount targets"
   vpc_id      = var.vpc_id
+}
 
-  egress {
-    description = "Return traffic within VPC"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [data.aws_vpc.selected.cidr_block]
-  }
+resource "aws_vpc_security_group_egress_rule" "s3files_within_vpc" {
+  description       = "Return traffic within VPC"
+  security_group_id = aws_security_group.s3files.id
+  cidr_ipv4         = data.aws_vpc.selected.cidr_block
+  ip_protocol       = "-1"
 }
 
 resource "aws_s3files_mount_target" "this" {
@@ -154,14 +153,15 @@ resource "aws_security_group" "compute" {
   vpc_id      = var.vpc_id
 
   # インバウンドは開けない。Tailscale 経由で使う前提（Tailscale 参加は別途）。
+}
 
-  egress {
-    description = "HTTPS egress (apt, git, pip, AWS APIs)"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_vpc_security_group_egress_rule" "compute_https" {
+  description       = "HTTPS egress (apt, git, pip, AWS APIs)"
+  security_group_id = aws_security_group.compute.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
 }
 
 # SG 同士を参照するルールは、相互参照の循環を避けるため単独リソースで定義する

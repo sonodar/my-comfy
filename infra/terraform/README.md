@@ -19,5 +19,7 @@ EC2（GPU スポット）／S3 バケット／IAM ロールなど、AWS 側リ�
 1. `terraform.tfvars.example` をコピーして `terraform.tfvars` を作り、VPC／サブネット（`subnet_id` はインスタンスが使う AZ のもの、`subnet_ids` は a/c/d 分。いずれもインターネットに出られるパブリックサブネット）／notify-me の SNS トピック ARN を入れる。
 2. `terraform init && terraform plan && terraform apply`
 3. コンソールか AWS CLI で起動テンプレートからインスタンスを立てる。
-4. 結果は notify-me（LINE）に届く。成功なら `boot check: ok`、失敗なら失敗項目が届く。詳細はインスタンス内の `/var/log/mycomfy/boot-check.json` と `/var/log/mycomfy/install.log`（Session Manager 経由で確認）。
+4. notify-me（LINE）で起動結果を確認する。通知は日本語で、時刻は JST。初回セットアップに失敗したときは通知に工程名が入り、詳細はインスタンス内の `/var/log/mycomfy/install.log` に残る。自己チェックの結果は `/var/log/mycomfy/boot-check.json` で確認できる。
 5. 用が済んだらインスタンスを停止し、不要なら `terraform destroy`。
+
+既存環境でセキュリティグループの送信ルールを独立した Terraform リソースに切り替えるときは、AWS 上の同じルールを対応するリソースにインポートしてから plan を確認する。既存の HTTPS や S3 Files 用のルールを再作成する必要はない。
