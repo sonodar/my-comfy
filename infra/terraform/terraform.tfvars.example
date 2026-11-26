@@ -26,13 +26,8 @@ notify_topic_arn = "arn:aws:sns:ap-northeast-1:000000000000:notify-me-topic"
 # （マシン側の鍵の期限、既定180日が切れるとそのマシンの接続が切れるため）。
 tailscale_auth_key_version = 1
 
-# モデルマニフェストと台本生成プロンプトは tfvars には書かない。apply のときに環境変数で渡すこと：
-#   TF_VAR_model_manifest='<models/manifest.yaml と同じ形式の YAML（各ファイルに source_url と sha256 を含む）>' terraform apply
-#   TF_VAR_script_generation_prompt="..." terraform apply
-# それぞれ SSM パラメータ /mycomfy/model-manifest、/mycomfy/script-generation-prompt に保存される。
-# 更新時は model_manifest_version / script_generation_prompt_version を上げて再 apply する。
-# aws ssm put-parameter で直接上書きすると Terraform 側の版数とずれるので、必ずこの経路で入れる。
-model_manifest_version = 1
-script_generation_prompt_version = 1
+# ワークフロー構築スクリプト一式（zip）は、専用バケットへ手作業でアップロードする
+# （キーと版の指定は workflow_setup_key / workflow_setup_version 変数。既定は
+# workflow-setup/mycomfy-workflow-setup.zip の最新版）。
 
 # key_name = "my-key"

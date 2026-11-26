@@ -73,28 +73,14 @@ variable "tailscale_auth_key_version" {
   nullable    = false
 }
 
-variable "model_manifest" {
-  description = "モデルマニフェスト全体（YAML 文字列。ファイルごとの取得元 URL・SHA256 を含む）。未設定なら空のマニフェストで作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
+variable "workflow_setup_key" {
+  description = "ワークフロー構築スクリプト一式（zip）のオブジェクトキー。置き場は専用バケット（workflow_setup.tf）。一式の中身はリポジトリでは管理しない"
   type        = string
-  sensitive   = true
-  default     = null
+  default     = "workflow-setup/mycomfy-workflow-setup.zip"
 }
 
-variable "model_manifest_version" {
-  description = "モデルマニフェストを Terraform で更新するときに増やす番号"
-  type        = number
-  nullable    = false
-}
-
-variable "script_generation_prompt" {
-  description = "台本生成プロンプト（モデルに付随する文面で、モデルと一緒に差し替える）。未設定ならプレースホルダで作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
+variable "workflow_setup_version" {
+  description = "ワークフロー構築スクリプト一式のオブジェクトバージョン ID。空なら起動時点の最新を使う"
   type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "script_generation_prompt_version" {
-  description = "台本生成プロンプトを Terraform で更新するときに増やす番号"
-  type        = number
-  nullable    = false
+  default     = ""
 }

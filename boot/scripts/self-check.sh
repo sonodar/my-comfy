@@ -92,33 +92,6 @@ if [ "$S3_OK" = "1" ]; then
   rm -f "$MARKER"
 fi
 
-# --- モデル（manifest のファイルがインスタンスストアに揃っているか） ---
-if [ -f /etc/mycomfy/manifest.yaml ]; then
-  MISSING="$(/opt/pytorch/bin/python - /etc/mycomfy/manifest.yaml "$STORE_PATH" <<'PYEOF'
-import os
-import sys
-
-import yaml
-
-with open(sys.argv[1], encoding="utf-8") as f:
-    models = yaml.safe_load(f)["models"]
-missing = []
-for m in models:
-    path = os.path.join(sys.argv[2], "models", m["dest"], m["file"])
-    if not (os.path.isfile(path) and os.path.getsize(path) > 0):
-        missing.append(m["file"])
-print(" ".join(missing))
-PYEOF
-)"
-  if [ -z "$MISSING" ]; then
-    echo "models: ok"
-  else
-    fail "models-missing" "モデルファイルが揃っていません: $MISSING"
-  fi
-else
-  fail "models-manifest-missing" "モデル同期マニフェストがありません。"
-fi
-
 # --- ComfyUI ---
 COMFYUI_OK=0
 for i in $(seq 1 60); do
