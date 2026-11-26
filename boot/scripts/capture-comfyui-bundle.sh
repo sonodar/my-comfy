@@ -4,6 +4,8 @@
 # カスタムノードの導入（ワークフロー構築）が終わった後に呼ぶこと。
 # 書き込み途中の tar がバンドルとして読まれないよう、一時名で書いてから
 # rename で確定させる。
+# モデルは含めない（S3 の models/ が正で、起動のたびにツリーへ同期される。
+# 含めるとバンドル側にもう一式複製されてしまう）。
 set -euo pipefail
 
 # shellcheck disable=SC1091
@@ -14,6 +16,7 @@ DEST="${S3FILES_MOUNT:-/mnt/s3files}/$COMFYUI_BUNDLE_KEY"
 mkdir -p "$(dirname "$DEST")"
 TMP="$DEST.tmp"
 tar -czf "$TMP" -C "$STORE_PATH" \
+  --exclude="ComfyUI/models" \
   --exclude="ComfyUI/output" \
   --exclude="ComfyUI/temp" \
   --exclude="*/__pycache__" \
