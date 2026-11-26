@@ -3,7 +3,7 @@
 # - インスタンスタイプは変数 (var.instance_type) で外出し。デフォルトは g6e.xlarge。
 # - AMI は AWS 公式 Deep Learning AMI。AMI ID は SSM パラメータ参照で取得し、
 #   コードに固定値を書かない。アーキテクチャの整合は plan 時に precondition で落とす。
-# - スポットインスタンス。普段は停止する前提。
+# - 購入方式は起動時に EC2 Fleet で選ぶ。
 # - user-data は boot/cloud-init/user-data.sh を templatefile で埋め込む。
 #   user-data 自体は小さく、実処理は S3 に置いた boot/ バンドル (install.sh) が担う。
 
@@ -12,7 +12,8 @@ data "aws_ssm_parameter" "dlami" {
 }
 
 data "aws_ec2_instance_type" "selected" {
-  instance_type = var.instance_type
+  for_each      = setunion(toset([var.instance_type]), var.spot_fleet_instance_types)
+  instance_type = each.key
 }
 
 resource "aws_launch_template" "this" {
@@ -20,14 +21,15 @@ resource "aws_launch_template" "this" {
   image_id      = data.aws_ssm_parameter.dlami.value
   instance_type = var.instance_type
 
+  tags = {
+    S3FilesFileSystemId = aws_s3files_file_system.this.id
+    FleetInstanceTypes  = join(",", sort(tolist(var.spot_fleet_instance_types)))
+  }
+
   key_name = var.key_name
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.instance.arn
-  }
-
-  instance_market_options {
-    market_type = "spot"
   }
 
   network_interfaces {
@@ -56,6 +58,10 @@ resource "aws_launch_template" "this" {
     notify_script                    = file("${path.module}/../../bin/notify.sh")
     cloudwatch_agent_parameter       = aws_ssm_parameter.cloudwatch_agent.name
     tailscale_auth_key_parameter     = local.tailscale_auth_key_parameter
+    comfyui_bundle_key               = "comfyui-bundle/${var.comfyui_version}.tar.gz"
+    workflow_setup_bucket            = aws_s3_bucket.workflow_setup.bucket
+    workflow_setup_key               = var.workflow_setup_key
+    workflow_setup_version           = var.workflow_setup_version
     stop_unused_services_script      = file("${path.module}/../../boot/cloud-init/stop-unused-services.sh")
     prepare_boot_dependencies_script = file("${path.module}/../../boot/cloud-init/prepare-boot-dependencies.sh")
     start_cloudwatch_agent_script    = file("${path.module}/../../boot/cloud-init/start-cloudwatch-agent.sh")
@@ -78,7 +84,10 @@ resource "aws_launch_template" "this" {
 
   lifecycle {
     precondition {
-      condition     = contains(data.aws_ec2_instance_type.selected.supported_architectures, "x86_64")
+      condition = alltrue([
+        for instance_type in data.aws_ec2_instance_type.selected :
+        contains(instance_type.supported_architectures, "x86_64")
+      ])
       error_message = "DLAMI の SSM パラメータは x86_64 用。arm64 のインスタンスタイプを使う場合は dlami_ssm_parameter も差し替えること。"
     }
   }

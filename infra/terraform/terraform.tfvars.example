@@ -26,4 +26,8 @@ notify_topic_arn = "arn:aws:sns:ap-northeast-1:000000000000:notify-me-topic"
 # （マシン側の鍵の期限、既定180日が切れるとそのマシンの接続が切れるため）。
 tailscale_auth_key_version = 1
 
+# ワークフロー構築スクリプト一式（zip）は、専用バケットへ手作業でアップロードする
+# （キーと版の指定は workflow_setup_key / workflow_setup_version 変数。既定は
+# workflow-setup/mycomfy-workflow-setup.zip の最新版）。
+
 # key_name = "my-key"

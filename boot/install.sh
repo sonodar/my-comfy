@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mycomfy 初回セットアップ（user-data から呼ばれる）。
-# やること：パッケージ導入 → マウント → ComfyUI 導入 → systemd ユニット配置 → 起動。
-# モデル同期はこのマイルストーンの範囲外。ComfyUI は空で起動するところまで。
+# やること：パッケージ導入 → Tailscale 参加 → マウント → ComfyUI 導入 →
+# ワークフロー構築（S3 上のスクリプト一式）→ systemd ユニット配置 → 起動と自己チェック。
 set -euo pipefail
 
 BOOT_DIR="/opt/mycomfy/boot"
@@ -44,6 +44,19 @@ bash "$BOOT_DIR/scripts/mount-s3files.sh"
 # --- ComfyUI（版固定。DLAMI の PyTorch 環境を使う） ---
 INSTALL_STAGE="ComfyUI の導入"
 bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
+
+# --- ComfyUI バンドルの保存（1から構築した場合のみ。次回起動から使う。
+# 中身は ComfyUI 本体＋venv のみ。カスタムノードは S3 側の担当で、
+# リポジトリ側の仕組みは関知しない） ---
+if [ -f /run/mycomfy-bundle-from-scratch ]; then
+  INSTALL_STAGE="ComfyUI バンドルの保存"
+  bash "$BOOT_DIR/scripts/capture-comfyui-bundle.sh"
+fi
+
+# --- ワークフロー構築（カスタムノード導入・モデル準備・ワークフロー配置は
+# S3 上のスクリプト一式が担う。リポジトリ側は受け口だけを持つ） ---
+INSTALL_STAGE="ワークフロー構築"
+bash "$BOOT_DIR/scripts/run-workflow-setup.sh"
 
 # --- systemd ユニット配置 ---
 INSTALL_STAGE="systemd サービスの登録"

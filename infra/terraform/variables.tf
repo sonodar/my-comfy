@@ -31,6 +31,18 @@ variable "instance_type" {
   default     = "g6e.xlarge"
 }
 
+variable "spot_fleet_instance_types" {
+  description = "Spot Fleet のインスタンスタイプ候補"
+  type        = set(string)
+  default     = ["g6e.xlarge", "g6e.2xlarge"]
+  nullable    = false
+
+  validation {
+    condition     = length(var.spot_fleet_instance_types) > 0
+    error_message = "Spot Fleet のインスタンスタイプ候補を1つ以上指定してください。"
+  }
+}
+
 variable "dlami_ssm_parameter" {
   description = "Deep Learning AMI を引く SSM パラメータ。AMI ID は固定値で書かない"
   type        = string
@@ -71,4 +83,16 @@ variable "tailscale_auth_key_version" {
   description = "Tailscale 認証キーを Terraform で更新するときに増やす番号"
   type        = number
   nullable    = false
+}
+
+variable "workflow_setup_key" {
+  description = "ワークフロー構築スクリプト一式（zip）のオブジェクトキー。置き場は専用バケット（workflow_setup.tf）。一式の中身はリポジトリでは管理しない"
+  type        = string
+  default     = "workflow-setup/mycomfy-workflow-setup.zip"
+}
+
+variable "workflow_setup_version" {
+  description = "ワークフロー構築スクリプト一式のオブジェクトバージョン ID。空なら起動時点の最新を使う"
+  type        = string
+  default     = ""
 }
