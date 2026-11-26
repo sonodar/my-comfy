@@ -12,7 +12,8 @@ data "aws_ssm_parameter" "dlami" {
 }
 
 data "aws_ec2_instance_type" "selected" {
-  instance_type = var.instance_type
+  for_each      = setunion(toset([var.instance_type]), var.spot_fleet_instance_types)
+  instance_type = each.key
 }
 
 resource "aws_launch_template" "this" {
@@ -81,7 +82,10 @@ resource "aws_launch_template" "this" {
 
   lifecycle {
     precondition {
-      condition     = contains(data.aws_ec2_instance_type.selected.supported_architectures, "x86_64")
+      condition = alltrue([
+        for instance_type in data.aws_ec2_instance_type.selected :
+        contains(instance_type.supported_architectures, "x86_64")
+      ])
       error_message = "DLAMI の SSM パラメータは x86_64 用。arm64 のインスタンスタイプを使う場合は dlami_ssm_parameter も差し替えること。"
     }
   }

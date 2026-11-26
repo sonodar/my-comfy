@@ -8,6 +8,7 @@ output "launch_template_latest_version" {
   value       = aws_launch_template.this.latest_version
 }
 
+# TODO: PoC 終了後は、起動テンプレートと EC2 Fleet から Spot の指定を外す。
 output "spot_fleet_config" {
   description = "S3 Files のマウントターゲットがある AZ から Spot インスタンスを1台起動する EC2 Fleet 設定"
   value = {
@@ -25,8 +26,12 @@ output "spot_fleet_config" {
         Version          = tostring(aws_launch_template.this.latest_version)
       }
       Overrides = [
-        for subnet_id in sort(keys(aws_s3files_mount_target.this)) : {
-          SubnetId = subnet_id
+        for candidate in setproduct(
+          keys(aws_s3files_mount_target.this),
+          sort(tolist(var.spot_fleet_instance_types))
+          ) : {
+          SubnetId     = candidate[0]
+          InstanceType = candidate[1]
         }
       ]
     }]

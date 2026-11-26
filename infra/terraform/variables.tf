@@ -31,6 +31,18 @@ variable "instance_type" {
   default     = "g6e.xlarge"
 }
 
+variable "spot_fleet_instance_types" {
+  description = "Spot Fleet のインスタンスタイプ候補"
+  type        = set(string)
+  default     = ["g6e.xlarge", "g6e.2xlarge"]
+  nullable    = false
+
+  validation {
+    condition     = length(var.spot_fleet_instance_types) > 0
+    error_message = "Spot Fleet のインスタンスタイプ候補を1つ以上指定してください。"
+  }
+}
+
 variable "dlami_ssm_parameter" {
   description = "Deep Learning AMI を引く SSM パラメータ。AMI ID は固定値で書かない"
   type        = string
