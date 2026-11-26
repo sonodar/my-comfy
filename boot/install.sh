@@ -26,7 +26,8 @@ echo "=== mycomfy install start: $(date -Is) ==="
 INSTALL_STAGE="Ubuntu パッケージの導入"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update --error-on=any
-apt-get install -y git curl unzip nfs-common jq
+# ffmpeg は動画の結合（フレーム画像を動画ファイルへ束ねる処理）に使う
+apt-get install -y git curl unzip nfs-common jq ffmpeg
 
 # --- Tailscale（アクセス経路。後の工程が失敗しても SSH で入れるよう、早い段階で参加させる） ---
 INSTALL_STAGE="Tailscale の導入"
