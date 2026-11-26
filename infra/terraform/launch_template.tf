@@ -58,7 +58,6 @@ resource "aws_launch_template" "this" {
     notify_script                    = file("${path.module}/../../bin/notify.sh")
     cloudwatch_agent_parameter       = aws_ssm_parameter.cloudwatch_agent.name
     tailscale_auth_key_parameter     = local.tailscale_auth_key_parameter
-    comfyui_bundle_bucket            = aws_s3_bucket.this.bucket
     comfyui_bundle_key               = "comfyui-bundle/${var.comfyui_version}.tar.gz"
     workflow_setup_bucket            = aws_s3_bucket.workflow_setup.bucket
     workflow_setup_key               = var.workflow_setup_key

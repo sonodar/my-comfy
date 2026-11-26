@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # ComfyUI の導入。バンドル（ComfyUI 本体＋カスタムノード＋venv を固めた tar）が
-# S3 にあれば取得して展開し、なければ版を固定して clone＋venv 構築から行う。
+# S3 Files 上にあれば直接展開し、なければ版を固定して clone＋venv 構築から行う。
 # どちらの場合も最後に requirements への pip install を必ず実行し、差分だけを
 # 補完する（満たされているものは pip が飛ばす）。
 # 1から構築した場合は印を残す。カスタムノードまで入った状態で、install.sh が
 # ワークフロー構築の後にバンドルとして S3 へ保存する。
+#
+# 置き場はインスタンスストア（ルート EBS には置かない。CUDA 版 PyTorch
+# 一式でルートが溢れるため）。参照する側もすべてインスタンスストア上の
+# パスを直接使う（リンクは挟まない）。
 set -euo pipefail
 
 COMFYUI_VERSION="$1"
@@ -13,29 +17,33 @@ COMFYUI_VERSION="$1"
 . /etc/mycomfy/env
 
 BASE_PY="/opt/pytorch/bin/python"
-VENV_PY="/opt/ComfyUI/venv/bin/python"
-export AWS_DEFAULT_REGION="${AWS_REGION:-$AWS_DEFAULT_REGION}"
+STORE_PATH="${INSTANCE_STORE_PATH:-/mnt/instance-store}"
+COMFYUI_DIR="$STORE_PATH/ComfyUI"
+VENV_PY="$COMFYUI_DIR/venv/bin/python"
+WORK_TMP="$STORE_PATH/tmp"
+# pip の一時ファイルもインスタンスストアへ（ルートを圧迫しない）
+export TMPDIR="$WORK_TMP"
 
 if [ ! -x "$BASE_PY" ]; then
   echo "FATAL: $BASE_PY not found (DLAMI の PyTorch 環境が無い)" >&2
   exit 1
 fi
+mkdir -p "$WORK_TMP"
 
-if [ ! -d /opt/ComfyUI ]; then
-  if aws s3api head-object --bucket "$COMFYUI_BUNDLE_BUCKET" --key "$COMFYUI_BUNDLE_KEY" >/dev/null 2>&1; then
-    echo "ComfyUI bundle: s3://$COMFYUI_BUNDLE_BUCKET/$COMFYUI_BUNDLE_KEY を取得して展開する"
-    aws s3 cp "s3://$COMFYUI_BUNDLE_BUCKET/$COMFYUI_BUNDLE_KEY" /tmp/comfyui-bundle.tar.gz >/dev/null
-    tar --no-same-owner -xzf /tmp/comfyui-bundle.tar.gz -C /opt
-    rm -f /tmp/comfyui-bundle.tar.gz
+BUNDLE_PATH="${S3FILES_MOUNT:-/mnt/s3files}/$COMFYUI_BUNDLE_KEY"
+if [ ! -d "$COMFYUI_DIR" ]; then
+  if [ -f "$BUNDLE_PATH" ]; then
+    echo "ComfyUI bundle: $BUNDLE_PATH を展開する"
+    tar --no-same-owner -xzf "$BUNDLE_PATH" -C "$STORE_PATH"
   else
     echo "ComfyUI bundle が無いため1から構築する (version: $COMFYUI_VERSION)"
     git clone --depth 1 --branch "$COMFYUI_VERSION" \
-      https://github.com/comfyanonymous/ComfyUI.git /opt/ComfyUI
-    "$BASE_PY" -m venv /opt/ComfyUI/venv
+      https://github.com/comfyanonymous/ComfyUI.git "$COMFYUI_DIR"
+    "$BASE_PY" -m venv "$COMFYUI_DIR/venv"
     touch /run/mycomfy-bundle-from-scratch
   fi
 fi
-echo "ComfyUI commit: $(git -C /opt/ComfyUI rev-parse HEAD)"
+echo "ComfyUI commit: $(git -C "$COMFYUI_DIR" rev-parse HEAD)"
 
 # 差分の補完（毎起動ごとに必ず実行する）
-"$VENV_PY" -m pip install -r /opt/ComfyUI/requirements.txt
+"$VENV_PY" -m pip install -r "$COMFYUI_DIR/requirements.txt"

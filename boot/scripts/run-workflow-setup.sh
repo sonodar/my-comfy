@@ -10,11 +10,12 @@ set -euo pipefail
 
 BUCKET="${WORKFLOW_SETUP_BUCKET:?WORKFLOW_SETUP_BUCKET is not set}"
 KEY="${WORKFLOW_SETUP_KEY:?WORKFLOW_SETUP_KEY is not set}"
-DEST="/opt/mycomfy/workflow-setup"
-ZIP="/tmp/mycomfy-workflow-setup.zip"
+STORE_PATH="${INSTANCE_STORE_PATH:-/mnt/instance-store}"
+DEST="$STORE_PATH/workflow-setup"
+ZIP="$STORE_PATH/tmp/mycomfy-workflow-setup.zip"
 
 export AWS_DEFAULT_REGION="${AWS_REGION:-$AWS_DEFAULT_REGION}"
-mkdir -p "$DEST"
+mkdir -p "$DEST" "$STORE_PATH/tmp"
 
 if [ -n "${WORKFLOW_SETUP_VERSION:-}" ]; then
   echo "workflow setup bundle: s3://$BUCKET/$KEY (version: $WORKFLOW_SETUP_VERSION)"
