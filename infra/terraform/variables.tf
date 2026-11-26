@@ -73,28 +73,15 @@ variable "tailscale_auth_key_version" {
   nullable    = false
 }
 
-variable "model_sources" {
-  description = "モデルファイルの取得元 URL（manifest の source_id→URL の JSON 文字列）。未設定なら空の JSON で作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
+variable "model_manifest" {
+  description = "モデルマニフェスト全体（YAML 文字列。ファイルごとの取得元 URL・SHA256 を含む）。未設定なら空のマニフェストで作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "model_sources_version" {
-  description = "モデルファイルの取得元 URL を Terraform で更新するときに増やす番号"
-  type        = number
-  nullable    = false
-}
-
-variable "model_checksums" {
-  description = "モデルファイルの SHA256（ファイル名→ハッシュの JSON 文字列）。未設定なら空の JSON で作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "model_checksums_version" {
-  description = "モデルファイルの SHA256 を Terraform で更新するときに増やす番号"
+variable "model_manifest_version" {
+  description = "モデルマニフェストを Terraform で更新するときに増やす番号"
   type        = number
   nullable    = false
 }

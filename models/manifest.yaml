@@ -1,31 +1,28 @@
-# モデルマニフェスト
-# 起動時のモデルまわりは、このマニフェストが正本になる。
+# モデルマニフェスト（雛形）
+# モデル情報はマニフェストに一元化する。運用時の正本は、この雛形に各ファイルの
+# 取得元 URL（source_url）と SHA256（sha256）を加えたマニフェスト全体を入れた
+# SSM パラメータ（/mycomfy/model-manifest）で、起動時に download-models.sh と
+# sync-models.sh がそれだけを読んで取得・同期する。モデルを差し替えられるよう、
+# 差し替えはマニフェストの差し替えだけで済む形にする。
 # 初回起動時は、S3 の models/ に無いファイルを download-models.sh が取得元から
 # 取得して S3 へ保存し（完了したら通知する）、sync-models.sh が S3 から
 # インスタンスストアへ同期する。2回目以降は S3 からの同期だけが走る。
-# モデルを差し替えられるよう、ファイルは識別名（code）で管理する。
-# 取得元の URL は SSM パラメータ（/mycomfy/model-sources、source_id→URL の JSON）、
-# SHA256 は SSM パラメータ（/mycomfy/model-checksums、ファイル名→ハッシュの JSON）で
-# 管理し、取得・同期のときに参照する。
 # 形式: code（モデル単位の識別名）/ file（S3 キーと配置ファイル名を兼ねる）
-#       / dest（ComfyUI の models/ 以下の配置先）/ source_id（取得元の識別名）
+#       / dest（ComfyUI の models/ 以下の配置先）/ source_url / sha256
 #       / role / approx_size
 models:
   - code: video-model-v1
     file: "video-model-v1.safetensors"
     dest: "checkpoints/"
-    source_id: "video-model-v1-checkpoint"
     role: "メインの動画生成モデル (I2V) のチェックポイント"
     approx_size: "約29GB"
   - code: video-model-v1
     file: "gemma-3-12b-it-ablit-norms-biproj-fp8mixed.safetensors"
     dest: "text_encoders/"
-    source_id: "video-model-v1-text-encoder"
     role: "メインの動画生成モデル用テキストエンコーダ（Gemma 3 12B）"
     approx_size: "約13GB"
   - code: video-model-v1
     file: "video-model-v1-lora.safetensors"
     dest: "loras/"
-    source_id: "video-model-v1-lora"
     role: "メインの動画生成モデル用の蒸留 LoRA（作者ワークフロー指定のもの）"
     approx_size: "約5GB"

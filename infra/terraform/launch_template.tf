@@ -56,8 +56,7 @@ resource "aws_launch_template" "this" {
     notify_script                      = file("${path.module}/../../bin/notify.sh")
     cloudwatch_agent_parameter         = aws_ssm_parameter.cloudwatch_agent.name
     tailscale_auth_key_parameter       = local.tailscale_auth_key_parameter
-    model_sources_parameter            = local.model_sources_parameter
-    model_checksums_parameter          = local.model_checksums_parameter
+    model_manifest_parameter           = local.model_manifest_parameter
     script_generation_prompt_parameter = local.script_generation_prompt_parameter
     stop_unused_services_script        = file("${path.module}/../../boot/cloud-init/stop-unused-services.sh")
     prepare_boot_dependencies_script   = file("${path.module}/../../boot/cloud-init/prepare-boot-dependencies.sh")
