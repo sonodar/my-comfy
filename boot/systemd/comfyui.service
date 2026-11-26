@@ -6,7 +6,7 @@ After=network-online.target
 Type=simple
 WorkingDirectory=/opt/ComfyUI
 EnvironmentFile=/etc/mycomfy/env
-ExecStart=/opt/pytorch/bin/python /opt/ComfyUI/main.py --listen 0.0.0.0 --port 8188
+ExecStart=/opt/ComfyUI/venv/bin/python /opt/ComfyUI/main.py --listen 0.0.0.0 --port 8188
 ExecStopPost=-:/bin/sh -c 'if [ "$SERVICE_RESULT" != success ] && [ -n "$NOTIFY_TOPIC_ARN" ] && grep -qx ready /run/mycomfy-boot-status 2>/dev/null; then AWS_DEFAULT_REGION="$AWS_REGION" exec /usr/bin/timeout 10s /usr/local/bin/notify.sh "mycomfy の ComfyUI が異常終了しました。結果 ${SERVICE_RESULT}、ホスト $(hostname)、時刻 $(TZ=Asia/Tokyo date -Iseconds)"; fi'
 Restart=on-failure
 RestartSec=10
