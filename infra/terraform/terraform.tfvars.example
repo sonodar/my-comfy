@@ -26,12 +26,15 @@ notify_topic_arn = "arn:aws:sns:ap-northeast-1:000000000000:notify-me-topic"
 # （マシン側の鍵の期限、既定180日が切れるとそのマシンの接続が切れるため）。
 tailscale_auth_key_version = 1
 
-# モデルファイルの SHA256 と台本生成プロンプトは tfvars には書かない。apply のときに環境変数で渡すこと：
+# モデルファイルの取得元 URL・SHA256 と台本生成プロンプトは tfvars には書かない。apply のときに環境変数で渡すこと：
+#   TF_VAR_model_sources='{"video-model-v1-checkpoint":"https://...", ...}' terraform apply
 #   TF_VAR_model_checksums='{"video-model-v1.safetensors":"<sha256>", ...}' terraform apply
 #   TF_VAR_script_generation_prompt="..." terraform apply
-# それぞれ SSM パラメータ /mycomfy/model-checksums と /mycomfy/script-generation-prompt に保存される。
-# 更新時は model_checksums_version / script_generation_prompt_version を上げて再 apply する。
-# 後から aws ssm put-parameter --overwrite で直接上書きしてもよい。
+# それぞれ SSM パラメータ /mycomfy/model-sources、/mycomfy/model-checksums、
+# /mycomfy/script-generation-prompt に保存される。
+# 更新時は model_sources_version / model_checksums_version / script_generation_prompt_version を上げて再 apply する。
+# aws ssm put-parameter で直接上書きすると Terraform 側の版数とずれるので、必ずこの経路で入れる。
+model_sources_version = 1
 model_checksums_version = 1
 script_generation_prompt_version = 1
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mycomfy 初回セットアップ（user-data から呼ばれる）。
 # やること：パッケージ導入 → Tailscale 参加 → マウント → ComfyUI 導入 →
-# モデル同期 → ワークフロー配置 → systemd ユニット配置 → 起動と自己チェック。
+# モデル取得（初回のみ）→ モデル同期 → ワークフロー配置 → systemd ユニット配置 → 起動と自己チェック。
 set -euo pipefail
 
 BOOT_DIR="/opt/mycomfy/boot"
@@ -44,6 +44,10 @@ bash "$BOOT_DIR/scripts/mount-s3files.sh"
 # --- ComfyUI（版固定。DLAMI の PyTorch 環境を使う） ---
 INSTALL_STAGE="ComfyUI の導入"
 bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
+
+# --- モデル取得（初回のみ：S3 に無ければ取得元から取得して S3 へ保存する） ---
+INSTALL_STAGE="モデル取得"
+bash "$BOOT_DIR/scripts/download-models.sh"
 
 # --- モデル同期（S3 → インスタンスストア） ---
 INSTALL_STAGE="モデル同期"

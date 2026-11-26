@@ -5,15 +5,15 @@
 - `cloud-init/`：初回起動時に失敗通知を先に設定し、S3 から起動用バンドルを取得して `install.sh` を呼ぶ。
 - `install.sh`：初回セットアップ。必要なソフトウェアを導入し、ストレージをマウントしてから ComfyUI を起動し、自己チェックを実行する。
 - `systemd/`：ComfyUI のプロセスを管理する。
-- `scripts/`：初回セットアップから必要に応じて呼び出す。モデル同期（`sync-models.sh`）とワークフロー配置（`place-workflows.sh`）を含む。
+- `scripts/`：初回セットアップから必要に応じて呼び出す。モデル取得（`download-models.sh`、初回のみ取得元から取得して S3 へ保存）、モデル同期（`sync-models.sh`、S3 からインスタンスストアへ）、ワークフロー配置（`place-workflows.sh`）を含む。
 
 プロンプト変換は ComfyUI コアノード（`TextGenerateLTX2Prompt`）が担う。テキストエンコーダとして読み込んだモデルを生成にも流用する公式の方式で、自前のノードや推論サーバーは持たない。台本生成プロンプトは SSM パラメータから `/etc/mycomfy/script-generation-prompt.txt` に配置し、`place-workflows.sh` がワークフロー内のプレースホルダと置き換えて注入する。
 
-初回セットアップの失敗は user-data が通知する。自己チェックは成否を通知し、失敗通知を送信済みなら user-data は同じ失敗を再送しない。自己チェックを通過したあとに ComfyUI が異常終了した場合は、`comfyui.service` が通知する。どれも `/usr/local/bin/notify.sh` から notify-me の SNS トピックへ送る。
+初回セットアップの失敗は user-data が通知する。自己チェックは成否を通知し、失敗通知を送信済みなら user-data は同じ失敗を再送しない。自己チェックを通過したあとに ComfyUI が異常終了した場合は、`comfyui.service` が通知する。モデル取得（初回のみ）が完了した場合も、`download-models.sh` が完了を通知する。どれも `/usr/local/bin/notify.sh` から notify-me の SNS トピックへ送る。
 
 ## 初回セットアップの範囲
 
-「起動テンプレートから立てたインスタンスで、初期化が最後まで通って ComfyUI が動いている」まで。含むもの：エフェメラルディスクのマウント、S3 Files のマウントと POSIX 読み書き、Tailscale 参加、モデル同期、ワークフロー配置、ComfyUI サービスの起動、自己チェックと通知。含まないもの：簡易 UI。
+「起動テンプレートから立てたインスタンスで、初期化が最後まで通って ComfyUI が動いている」まで。含むもの：エフェメラルディスクのマウント、S3 Files のマウントと POSIX 読み書き、Tailscale 参加、モデル取得とモデル同期、ワークフロー配置、ComfyUI サービスの起動、自己チェックと通知。含まないもの：簡易 UI。
 
 制限：ComfyUI は版固定の git clone＋pip インストール（バンドル化は後で検討）。自己チェックの S3 可視確認だけは反映遅延のため警告扱い。
 

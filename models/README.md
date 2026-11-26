@@ -1,20 +1,19 @@
 # models
 
-モデルの実ファイルは置かない。実ファイルは S3 に置き、起動時にインスタンスストアへ同期する。モデルを差し替えられるよう、参照は manifest の識別名で統一し、実ファイルと検証値は S3 と SSM で管理する。差し替えは、manifest と S3 の実ファイルの入れ替え、SSM のチェックサム更新だけで済む。
+モデルの実ファイルは置かない。実ファイルは S3 に置き、起動時にインスタンスストアへ同期する。モデルを差し替えられるよう、参照は manifest の識別名で統一し、取得元と検証値は SSM で管理する。差し替えは、manifest の差し替えと SSM の取得元・チェックサム更新だけで済む。
 
-- `manifest.yaml`：同期対象の一覧。各エントリは「識別名／ファイル名／配置先／役割／サイズ目安」を持ち、起動時同期（`boot/scripts/sync-models.sh`）と自己チェックに使う。ファイル名は S3 のキー（`models/<ファイル名>`）と配置ファイル名を兼ねる。
-- SHA256 は SSM パラメータ `/mycomfy/model-checksums`（ファイル名→ハッシュの JSON）で管理し、同期時に取得して照合する。台本生成プロンプトも SSM パラメータ `/mycomfy/script-generation-prompt` で管理し、起動時にワークフローへ注入する。
+- `manifest.yaml`：モデルまわりの正本。各エントリは「識別名／ファイル名／配置先／取得元の識別名（source_id）／役割／サイズ目安」を持ち、初回取得（`boot/scripts/download-models.sh`）、起動時同期（`boot/scripts/sync-models.sh`）、自己チェックに使う。ファイル名は S3 のキー（`models/<ファイル名>`）と配置ファイル名を兼ねる。
+- 取得元の URL は SSM パラメータ `/mycomfy/model-sources`（source_id→URL の JSON）、SHA256 は SSM パラメータ `/mycomfy/model-checksums`（ファイル名→ハッシュの JSON）で管理する。台本生成プロンプトも SSM パラメータ `/mycomfy/script-generation-prompt` で管理し、起動時にワークフローへ注入する。
 - ハッシュが未確認のモデルはパラメータに確定値として書かない（取得時に実測して埋める）。
 
-## S3 への初回投入
+## 初回取得と同期の流れ
 
-モデル実体は Terraform で管理しない。配布元から取得し、manifest のファイル名で、成果物バケットの `models/` へ手作業で置く。
+モデル実体は Terraform で管理しない。起動時の流れは次のとおりで、手作業での S3 投入は要らない。
 
-```
-aws s3 cp <ファイル名> s3://<バケット>/models/<ファイル名>
-```
+1. `download-models.sh` が manifest の各ファイルについて S3 の `models/` を確認し、無いものだけ取得元（SSM の URL）から取得する。SHA256 を照合してから S3 へ保存し、1件でも取得したら完了を通知する。
+2. `sync-models.sh` が S3 の `models/` からインスタンスストアへ同期し、ComfyUI の models/ 配下へリンクする。
 
-manifest に無いファイルは同期されない。ファイルを追加・差し替えしたら、対応する SHA256 も `/mycomfy/model-checksums` に反映する。
+manifest に無いファイルは取得も同期もされない。ファイルを追加・差し替えしたら、対応する取得元と SHA256 も SSM に反映する。
 
 ## 次世代ベースへの移行判定
 

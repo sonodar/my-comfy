@@ -73,8 +73,21 @@ variable "tailscale_auth_key_version" {
   nullable    = false
 }
 
+variable "model_sources" {
+  description = "モデルファイルの取得元 URL（manifest の source_id→URL の JSON 文字列）。未設定なら空の JSON で作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "model_sources_version" {
+  description = "モデルファイルの取得元 URL を Terraform で更新するときに増やす番号"
+  type        = number
+  nullable    = false
+}
+
 variable "model_checksums" {
-  description = "モデルファイルの SHA256（ファイル名→ハッシュの JSON 文字列）。未設定なら空の JSON で作られ、実値は後から AWS CLI で上書きできる"
+  description = "モデルファイルの SHA256（ファイル名→ハッシュの JSON 文字列）。未設定なら空の JSON で作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
   type        = string
   sensitive   = true
   default     = null
@@ -87,7 +100,7 @@ variable "model_checksums_version" {
 }
 
 variable "script_generation_prompt" {
-  description = "台本生成プロンプト（モデルに付随する文面で、モデルと一緒に差し替える）。未設定ならプレースホルダで作られ、実値は後から AWS CLI で上書きできる"
+  description = "台本生成プロンプト（モデルに付随する文面で、モデルと一緒に差し替える）。未設定ならプレースホルダで作られる。実値も Terraform 経由で入れる（SSM へ直接書くと版数がずれるため）"
   type        = string
   sensitive   = true
   default     = null
