@@ -46,19 +46,21 @@ resource "aws_launch_template" "this" {
   }
 
   user_data = base64encode(templatefile("${path.module}/../../boot/cloud-init/user-data.sh", {
-    boot_bucket                      = aws_s3_bucket.this.bucket
-    boot_key                         = aws_s3_object.boot_bundle.key
-    aws_region                       = var.aws_region
-    notify_topic_arn                 = var.notify_topic_arn
-    s3_files_id                      = aws_s3files_file_system.this.id
-    comfyui_version                  = var.comfyui_version
-    bucket_name                      = aws_s3_bucket.this.bucket
-    notify_script                    = file("${path.module}/../../bin/notify.sh")
-    cloudwatch_agent_parameter       = aws_ssm_parameter.cloudwatch_agent.name
-    tailscale_auth_key_parameter     = local.tailscale_auth_key_parameter
-    stop_unused_services_script      = file("${path.module}/../../boot/cloud-init/stop-unused-services.sh")
-    prepare_boot_dependencies_script = file("${path.module}/../../boot/cloud-init/prepare-boot-dependencies.sh")
-    start_cloudwatch_agent_script    = file("${path.module}/../../boot/cloud-init/start-cloudwatch-agent.sh")
+    boot_bucket                        = aws_s3_bucket.this.bucket
+    boot_key                           = aws_s3_object.boot_bundle.key
+    aws_region                         = var.aws_region
+    notify_topic_arn                   = var.notify_topic_arn
+    s3_files_id                        = aws_s3files_file_system.this.id
+    comfyui_version                    = var.comfyui_version
+    bucket_name                        = aws_s3_bucket.this.bucket
+    notify_script                      = file("${path.module}/../../bin/notify.sh")
+    cloudwatch_agent_parameter         = aws_ssm_parameter.cloudwatch_agent.name
+    tailscale_auth_key_parameter       = local.tailscale_auth_key_parameter
+    model_checksums_parameter          = local.model_checksums_parameter
+    script_generation_prompt_parameter = local.script_generation_prompt_parameter
+    stop_unused_services_script        = file("${path.module}/../../boot/cloud-init/stop-unused-services.sh")
+    prepare_boot_dependencies_script   = file("${path.module}/../../boot/cloud-init/prepare-boot-dependencies.sh")
+    start_cloudwatch_agent_script      = file("${path.module}/../../boot/cloud-init/start-cloudwatch-agent.sh")
   }))
 
   tag_specifications {

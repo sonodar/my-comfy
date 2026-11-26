@@ -21,6 +21,8 @@ AWS_REGION="${aws_region}"
 COMFYUI_VERSION="${comfyui_version}"
 BUCKET_NAME="${bucket_name}"
 TAILSCALE_AUTH_KEY_PARAMETER="${tailscale_auth_key_parameter}"
+MODEL_CHECKSUMS_PARAMETER="${model_checksums_parameter}"
+SCRIPT_GENERATION_PROMPT_PARAMETER="${script_generation_prompt_parameter}"
 INSTANCE_STORE_PATH="/mnt/instance-store"
 S3FILES_MOUNT="/mnt/s3files"
 ENVEOF

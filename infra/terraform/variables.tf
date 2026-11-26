@@ -72,3 +72,29 @@ variable "tailscale_auth_key_version" {
   type        = number
   nullable    = false
 }
+
+variable "model_checksums" {
+  description = "モデルファイルの SHA256（ファイル名→ハッシュの JSON 文字列）。未設定なら空の JSON で作られ、実値は後から AWS CLI で上書きできる"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "model_checksums_version" {
+  description = "モデルファイルの SHA256 を Terraform で更新するときに増やす番号"
+  type        = number
+  nullable    = false
+}
+
+variable "script_generation_prompt" {
+  description = "台本生成プロンプト（モデルに付随する文面で、モデルと一緒に差し替える）。未設定ならプレースホルダで作られ、実値は後から AWS CLI で上書きできる"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "script_generation_prompt_version" {
+  description = "台本生成プロンプトを Terraform で更新するときに増やす番号"
+  type        = number
+  nullable    = false
+}

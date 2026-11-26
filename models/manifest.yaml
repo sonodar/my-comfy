@@ -1,0 +1,24 @@
+# モデル同期マニフェスト
+# 起動時に S3 の models/ からインスタンスストアへ同期するファイルの一覧。
+# モデルを差し替えられるよう、ファイルは識別名（code）で管理し、差し替えは
+# このマニフェストと S3 側の実ファイルの入れ替えだけで済むようにする。
+# SHA256 は SSM パラメータ（/mycomfy/model-checksums、ファイル名→ハッシュの JSON）から
+# 同期時に取得して照合する。
+# 形式: code（モデル単位の識別名）/ file（S3 キーと配置ファイル名を兼ねる）
+#       / dest（ComfyUI の models/ 以下の配置先）/ role / approx_size
+models:
+  - code: video-model-v1
+    file: "video-model-v1.safetensors"
+    dest: "checkpoints/"
+    role: "メインの動画生成モデル (I2V) のチェックポイント"
+    approx_size: "約29GB"
+  - code: video-model-v1
+    file: "gemma-3-12b-it-ablit-norms-biproj-fp8mixed.safetensors"
+    dest: "text_encoders/"
+    role: "メインの動画生成モデル用テキストエンコーダ（Gemma 3 12B）"
+    approx_size: "約13GB"
+  - code: video-model-v1
+    file: "video-model-v1-lora.safetensors"
+    dest: "loras/"
+    role: "メインの動画生成モデル用の蒸留 LoRA（作者ワークフロー指定のもの）"
+    approx_size: "約5GB"

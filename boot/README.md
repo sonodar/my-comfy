@@ -5,7 +5,9 @@
 - `cloud-init/`：初回起動時に失敗通知を先に設定し、S3 から起動用バンドルを取得して `install.sh` を呼ぶ。
 - `install.sh`：初回セットアップ。必要なソフトウェアを導入し、ストレージをマウントしてから ComfyUI を起動し、自己チェックを実行する。
 - `systemd/`：ComfyUI のプロセスを管理する。
-- `scripts/`：初回セットアップから必要に応じて呼び出す。
+- `scripts/`：初回セットアップから必要に応じて呼び出す。モデル同期（`sync-models.sh`）とワークフロー配置（`place-workflows.sh`）を含む。
+
+プロンプト変換は ComfyUI コアノード（`TextGenerateLTX2Prompt`）が担う。テキストエンコーダとして読み込んだモデルを生成にも流用する公式の方式で、自前のノードや推論サーバーは持たない。台本生成プロンプトは SSM パラメータから `/etc/mycomfy/script-generation-prompt.txt` に配置し、`place-workflows.sh` がワークフロー内のプレースホルダと置き換えて注入する。
 
 初回セットアップの失敗は user-data が通知する。自己チェックは成否を通知し、失敗通知を送信済みなら user-data は同じ失敗を再送しない。自己チェックを通過したあとに ComfyUI が異常終了した場合は、`comfyui.service` が通知する。どれも `/usr/local/bin/notify.sh` から notify-me の SNS トピックへ送る。
 

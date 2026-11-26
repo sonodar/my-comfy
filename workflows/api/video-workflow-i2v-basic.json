@@ -1,0 +1,267 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "video-model-v1.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LTXAVTextEncoderLoader",
+    "inputs": {
+      "text_encoder": "gemma-3-12b-it-ablit-norms-biproj-fp8mixed.safetensors",
+      "ckpt_name": "video-model-v1.safetensors",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "lora_name": "video-model-v1-lora.safetensors",
+      "strength_model": 1.0,
+      "model": [
+        "1",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "start.png"
+    }
+  },
+  "5": {
+    "class_type": "TextGenerateLTX2Prompt",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "人物がカメラを見て微笑み、ゆっくりと手を振る",
+      "image": [
+        "4",
+        0
+      ],
+      "max_length": 1024,
+      "sampling_mode": {
+        "sampling_mode": "on",
+        "temperature": 0.7,
+        "top_k": 64,
+        "top_p": 0.95,
+        "min_p": 0.05,
+        "repetition_penalty": 1.05,
+        "seed": 0
+      },
+      "system_prompt": [
+        "22",
+        0
+      ]
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": [
+        "5",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "blurry, low quality, static, distorted, watermark, subtitles",
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "LTXVImgToVideo",
+    "inputs": {
+      "width": 768,
+      "height": 512,
+      "length": 121,
+      "batch_size": 1,
+      "strength": 1.0,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "image": [
+        "4",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "LTXVAudioVAELoader",
+    "inputs": {
+      "ckpt_name": "video-model-v1.safetensors"
+    }
+  },
+  "10": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": 121,
+      "frame_rate": 25,
+      "batch_size": 1,
+      "audio_vae": [
+        "9",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "8",
+        2
+      ],
+      "audio_latent": [
+        "10",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "13": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    }
+  },
+  "14": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "1.000, 0.968, 0.926, 0.875, 0.812, 0.741, 0.661, 0.574, 0.482, 0.241, 0.121, 0.000"
+    }
+  },
+  "15": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "cfg": 1.0,
+      "model": [
+        "3",
+        0
+      ],
+      "positive": [
+        "8",
+        0
+      ],
+      "negative": [
+        "8",
+        1
+      ]
+    }
+  },
+  "16": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "12",
+        0
+      ],
+      "guider": [
+        "15",
+        0
+      ],
+      "sampler": [
+        "13",
+        0
+      ],
+      "sigmas": [
+        "14",
+        0
+      ],
+      "latent_image": [
+        "11",
+        0
+      ]
+    }
+  },
+  "17": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "16",
+        0
+      ]
+    }
+  },
+  "18": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "17",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    }
+  },
+  "19": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": {
+      "samples": [
+        "17",
+        1
+      ],
+      "audio_vae": [
+        "9",
+        0
+      ]
+    }
+  },
+  "20": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 25.0,
+      "images": [
+        "18",
+        0
+      ],
+      "audio": [
+        "19",
+        0
+      ]
+    }
+  },
+  "21": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": "video-model-v1",
+      "video": [
+        "20",
+        0
+      ]
+    }
+  },
+  "22": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "__MYCOMFY_SCRIPT_GENERATION_PROMPT__"
+    }
+  }
+}

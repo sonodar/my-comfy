@@ -45,6 +45,22 @@ bash "$BOOT_DIR/scripts/mount-s3files.sh"
 INSTALL_STAGE="ComfyUI の導入"
 bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
 
+# --- モデル同期（S3 → インスタンスストア） ---
+INSTALL_STAGE="モデル同期"
+bash "$BOOT_DIR/scripts/sync-models.sh"
+
+# --- 台本生成プロンプトの取得（実値は SSM にだけ置く） ---
+INSTALL_STAGE="台本生成プロンプトの取得"
+if [ -n "${SCRIPT_GENERATION_PROMPT_PARAMETER:-}" ]; then
+  aws ssm get-parameter --name "$SCRIPT_GENERATION_PROMPT_PARAMETER" --with-decryption \
+    --query "Parameter.Value" --output text > /etc/mycomfy/script-generation-prompt.txt
+  chmod 600 /etc/mycomfy/script-generation-prompt.txt
+fi
+
+# --- ワークフローの配置（API 形式は保管、UI 形式は ComfyUI のワークフロー置き場へ。台本生成プロンプトを注入する） ---
+INSTALL_STAGE="ワークフローの配置"
+bash "$BOOT_DIR/scripts/place-workflows.sh"
+
 # --- systemd ユニット配置 ---
 INSTALL_STAGE="systemd サービスの登録"
 cp "$BOOT_DIR/systemd/comfyui.service" /etc/systemd/system/
