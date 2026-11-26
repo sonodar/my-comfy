@@ -45,10 +45,16 @@ bash "$BOOT_DIR/scripts/mount-s3files.sh"
 INSTALL_STAGE="ComfyUI の導入"
 bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
 
+# --- ComfyUI バンドルの保存（1から構築した場合のみ。次回起動から使う。
+# 中身は ComfyUI 本体＋venv のみ。カスタムノードは S3 側の担当で、
+# リポジトリ側の仕組みは関知しない） ---
+if [ -f /run/mycomfy-bundle-from-scratch ]; then
+  INSTALL_STAGE="ComfyUI バンドルの保存"
+  bash "$BOOT_DIR/scripts/capture-comfyui-bundle.sh"
+fi
+
 # --- ワークフロー構築（カスタムノード導入・モデル準備・ワークフロー配置は
-# S3 上のスクリプト一式が担う。リポジトリ側は受け口だけを持つ。
-# バンドルの保存は、1から構築した場合に、カスタムノード導入の直後・
-# モデル準備の前に S3 側の setup.sh から呼ばれる） ---
+# S3 上のスクリプト一式が担う。リポジトリ側は受け口だけを持つ） ---
 INSTALL_STAGE="ワークフロー構築"
 bash "$BOOT_DIR/scripts/run-workflow-setup.sh"
 
