@@ -33,9 +33,14 @@ output "spot_fleet_config" {
   }
 }
 
-output "bucket_name" {
-  description = "S3 バケット名（成果物置き場）"
+output "output_bucket_name" {
+  description = "S3 バケット名（成果物・モデル置き場。S3 Files の実体）"
   value       = aws_s3_bucket.this.bucket
+}
+
+output "workflow_setup_bucket_name" {
+  description = "S3 バケット名（ワークフロー構築スクリプト一式の置き場）"
+  value       = aws_s3_bucket.workflow_setup.bucket
 }
 
 output "s3_files_id" {
