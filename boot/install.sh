@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mycomfy 初回セットアップ（user-data から呼ばれる）。
-# やること：パッケージ導入 → マウント → ComfyUI 導入 → systemd ユニット配置 → 起動。
-# モデル同期はこのマイルストーンの範囲外。ComfyUI は空で起動するところまで。
+# やること：パッケージ導入 → Tailscale 参加 → マウント → ComfyUI 導入 →
+# モデル同期 → ワークフロー配置 → systemd ユニット配置 → 起動と自己チェック。
 set -euo pipefail
 
 BOOT_DIR="/opt/mycomfy/boot"
