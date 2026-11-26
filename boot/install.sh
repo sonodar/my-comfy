@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mycomfy 初回セットアップ（user-data から呼ばれる）。
 # やること：パッケージ導入 → Tailscale 参加 → マウント → ComfyUI 導入 →
-# モデル取得（初回のみ）→ モデル同期 → ワークフロー配置 → systemd ユニット配置 → 起動と自己チェック。
+# マニフェスト取得 → モデル取得（初回のみ）→ モデル同期 → ワークフロー配置 → systemd ユニット配置 → 起動と自己チェック。
 set -euo pipefail
 
 BOOT_DIR="/opt/mycomfy/boot"
@@ -45,13 +45,18 @@ bash "$BOOT_DIR/scripts/mount-s3files.sh"
 INSTALL_STAGE="ComfyUI の導入"
 bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
 
+# --- モデルマニフェストの取得（モデル情報の正本。モデル取得と同期はこれだけを読む） ---
+MANIFEST_PATH="/etc/mycomfy/manifest.yaml"
+INSTALL_STAGE="モデルマニフェストの取得"
+bash "$BOOT_DIR/scripts/get-manifest.sh" "$MANIFEST_PATH"
+
 # --- モデル取得（初回のみ：S3 に無ければ取得元から取得して S3 へ保存する） ---
 INSTALL_STAGE="モデル取得"
-bash "$BOOT_DIR/scripts/download-models.sh"
+bash "$BOOT_DIR/scripts/download-models.sh" "$MANIFEST_PATH"
 
 # --- モデル同期（S3 → インスタンスストア） ---
 INSTALL_STAGE="モデル同期"
-bash "$BOOT_DIR/scripts/sync-models.sh"
+bash "$BOOT_DIR/scripts/sync-models.sh" "$MANIFEST_PATH"
 
 # --- 台本生成プロンプトの取得（実値は SSM にだけ置く） ---
 INSTALL_STAGE="台本生成プロンプトの取得"

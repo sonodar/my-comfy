@@ -5,7 +5,7 @@
 - `cloud-init/`：初回起動時に失敗通知を先に設定し、S3 から起動用バンドルを取得して `install.sh` を呼ぶ。
 - `install.sh`：初回セットアップ。必要なソフトウェアを導入し、ストレージをマウントしてから ComfyUI を起動し、自己チェックを実行する。
 - `systemd/`：ComfyUI のプロセスを管理する。
-- `scripts/`：初回セットアップから必要に応じて呼び出す。モデル取得（`download-models.sh`、初回のみ取得元から取得して S3 へ保存）、モデル同期（`sync-models.sh`、S3 からインスタンスストアへ）、ワークフロー配置（`place-workflows.sh`）を含む。
+- `scripts/`：初回セットアップから必要に応じて呼び出す。マニフェスト取得（`get-manifest.sh`、SSM から取得して `/etc/mycomfy/manifest.yaml` へ書き出す）、モデル取得（`download-models.sh`、初回のみ取得元から取得して S3 へ保存）、モデル同期（`sync-models.sh`、S3 からインスタンスストアへ）、ワークフロー配置（`place-workflows.sh`）を含む。
 
 プロンプト変換は ComfyUI コアノード（`TextGenerateLTX2Prompt`）が担う。テキストエンコーダとして読み込んだモデルを生成にも流用する公式の方式で、自前のノードや推論サーバーは持たない。台本生成プロンプトは SSM パラメータから `/etc/mycomfy/script-generation-prompt.txt` に配置し、`place-workflows.sh` がワークフロー内のプレースホルダと置き換えて注入する。
 

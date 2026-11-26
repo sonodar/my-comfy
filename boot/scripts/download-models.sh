@@ -2,8 +2,8 @@
 # モデル取得（初回のみ）：manifest のファイルが S3 の models/ に無ければ、
 # 取得元からダウンロードして検証し、S3 へ保存する。S3 に揃っているファイルは
 # 何もしない（同期は sync-models.sh の担当）。
-# モデル情報は manifest に一元化し、全体を SSM パラメータ（/mycomfy/model-manifest）
-# から取得する。取得元の URL と SHA256 も manifest の各エントリから引く。
+# manifest は get-manifest.sh が SSM パラメータ（/mycomfy/model-manifest）から
+# 取得して書き出したものを使う。取得元の URL と SHA256 も manifest の各エントリから引く。
 # 1件でも取得したら、完了を notify で通知する。
 set -euo pipefail
 
@@ -12,14 +12,13 @@ set -euo pipefail
 
 BUCKET="${BUCKET_NAME:?BUCKET_NAME is not set}"
 STORE_PATH="${INSTANCE_STORE_PATH:-/mnt/instance-store}"
-MANIFEST="/etc/mycomfy/manifest.yaml"
+MANIFEST="${1:?usage: download-models.sh <manifest-path>}"
 PY="/opt/pytorch/bin/python"
 
-mkdir -p "$(dirname "$MANIFEST")"
-
-echo "model manifest: ssm parameter $MODEL_MANIFEST_PARAMETER"
-aws ssm get-parameter --name "${MODEL_MANIFEST_PARAMETER:?MODEL_MANIFEST_PARAMETER is not set}" \
-  --query "Parameter.Value" --output text > "$MANIFEST"
+if [ ! -s "$MANIFEST" ]; then
+  echo "FATAL: manifest がありません（$MANIFEST）。get-manifest.sh で取得してから渡してください" >&2
+  exit 1
+fi
 
 # manifest（YAML）を JSON 化する。PyYAML は ComfyUI の依存に入っている。
 "$PY" - "$MANIFEST" <<'PYEOF' > /tmp/mycomfy-models.json

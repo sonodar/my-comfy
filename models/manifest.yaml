@@ -1,8 +1,9 @@
 # モデルマニフェスト（雛形）
 # モデル情報はマニフェストに一元化する。運用時の正本は、この雛形に各ファイルの
 # 取得元 URL（source_url）と SHA256（sha256）を加えたマニフェスト全体を入れた
-# SSM パラメータ（/mycomfy/model-manifest）で、起動時に download-models.sh と
-# sync-models.sh がそれだけを読んで取得・同期する。モデルを差し替えられるよう、
+# SSM パラメータ（/mycomfy/model-manifest）で、起動時に get-manifest.sh が取得し、
+# download-models.sh と sync-models.sh がそれだけを読んで取得・同期する。
+# モデルを差し替えられるよう、
 # 差し替えはマニフェストの差し替えだけで済む形にする。
 # 初回起動時は、S3 の models/ に無いファイルを download-models.sh が取得元から
 # 取得して S3 へ保存し（完了したら通知する）、sync-models.sh が S3 から

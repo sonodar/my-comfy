@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # モデル同期：S3 の models/ からインスタンスストアへ、manifest のファイルを取り込む。
-# SHA256 は manifest の各エントリの sha256 で照合する。manifest 全体は
-# SSM パラメータ（/mycomfy/model-manifest）から取得する。
+# SHA256 は manifest の各エントリの sha256 で照合する。manifest は get-manifest.sh が
+# SSM パラメータ（/mycomfy/model-manifest）から取得して書き出したものを使う。
 # 配置したファイルは ComfyUI の models/ 配下へシンボリックリンクし、ComfyUI から見えるようにする。
 set -euo pipefail
 
@@ -11,14 +11,15 @@ set -euo pipefail
 BUCKET="${BUCKET_NAME:?BUCKET_NAME is not set}"
 STORE_PATH="${INSTANCE_STORE_PATH:-/mnt/instance-store}"
 MODELS_DIR="$STORE_PATH/models"
-MANIFEST="/etc/mycomfy/manifest.yaml"
+MANIFEST="${1:?usage: sync-models.sh <manifest-path>}"
 PY="/opt/pytorch/bin/python"
 
 mkdir -p "$MODELS_DIR"
 
-echo "model manifest: ssm parameter $MODEL_MANIFEST_PARAMETER"
-aws ssm get-parameter --name "${MODEL_MANIFEST_PARAMETER:?MODEL_MANIFEST_PARAMETER is not set}" \
-  --query "Parameter.Value" --output text > "$MANIFEST"
+if [ ! -s "$MANIFEST" ]; then
+  echo "FATAL: manifest がありません（$MANIFEST）。get-manifest.sh で取得してから渡してください" >&2
+  exit 1
+fi
 
 # manifest（YAML）を JSON 化する。PyYAML は ComfyUI の依存に入っている。
 "$PY" - "$MANIFEST" <<'PYEOF' > /tmp/mycomfy-models.json

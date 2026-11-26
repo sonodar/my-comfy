@@ -3,14 +3,14 @@
 モデルの実ファイルは置かない。実ファイルは S3 に置き、起動時にインスタンスストアへ同期する。モデル情報は manifest に一元化し、運用時の正本は manifest 全体を入れた SSM パラメータで管理する。差し替えは、SSM の manifest の差し替えだけで済む。
 
 - `manifest.yaml`：モデルマニフェストの雛形。各エントリは「識別名／ファイル名／配置先／役割／サイズ目安」を持ち、ファイル名は S3 のキー（`models/<ファイル名>`）と配置ファイル名を兼ねる。運用時はこの雛形に各ファイルの取得元 URL と SHA256 を加えたものが正本になる。
-- 運用時の manifest は SSM パラメータ `/mycomfy/model-manifest` に全体を入れて管理し、初回取得（`boot/scripts/download-models.sh`）と起動時同期（`boot/scripts/sync-models.sh`）は起動時にそれだけを取得して使う。自己チェックは、スクリプトが `/etc/mycomfy/manifest.yaml` に書き出したものを読む。台本生成プロンプトも SSM パラメータ `/mycomfy/script-generation-prompt` で管理し、起動時にワークフローへ注入する。
+- 運用時の manifest は SSM パラメータ `/mycomfy/model-manifest` に全体を入れて管理し、起動時は `boot/scripts/get-manifest.sh` がそれを取得して `/etc/mycomfy/manifest.yaml` へ書き出す。初回取得（`boot/scripts/download-models.sh`）、起動時同期（`boot/scripts/sync-models.sh`）、自己チェックは、そのファイルだけを読む。台本生成プロンプトも SSM パラメータ `/mycomfy/script-generation-prompt` で管理し、起動時にワークフローへ注入する。
 - ハッシュが未確認のモデルはパラメータに確定値として書かない（取得時に実測して埋める）。
 
 ## 初回取得と同期の流れ
 
 モデル実体は Terraform で管理しない。起動時の流れは次のとおりで、手作業での S3 投入は要らない。
 
-1. `download-models.sh` が SSM から manifest を取得し、各ファイルについて S3 の `models/` を確認し、無いものだけ取得元（manifest の URL）から取得する。SHA256 を照合してから S3 へ保存し、1件でも取得したら完了を通知する。
+1. `get-manifest.sh` が SSM から manifest を取得し、`download-models.sh` が各ファイルについて S3 の `models/` を確認し、無いものだけ取得元（manifest の URL）から取得する。SHA256 を照合してから S3 へ保存し、1件でも取得したら完了を通知する。
 2. `sync-models.sh` が S3 の `models/` からインスタンスストアへ同期し、ComfyUI の models/ 配下へリンクする。
 
 manifest に無いファイルは取得も同期もされない。ファイルを追加・差し替えしたら、SSM の manifest を差し替える。
