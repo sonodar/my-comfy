@@ -3,7 +3,7 @@
 # - インスタンスタイプは変数 (var.instance_type) で外出し。デフォルトは g6e.xlarge。
 # - AMI は AWS 公式 Deep Learning AMI。AMI ID は SSM パラメータ参照で取得し、
 #   コードに固定値を書かない。アーキテクチャの整合は plan 時に precondition で落とす。
-# - スポットインスタンス。普段は停止する前提。
+# - 購入方式は起動時に EC2 Fleet で選ぶ。
 # - user-data は boot/cloud-init/user-data.sh を templatefile で埋め込む。
 #   user-data 自体は小さく、実処理は S3 に置いた boot/ バンドル (install.sh) が担う。
 
@@ -21,14 +21,15 @@ resource "aws_launch_template" "this" {
   image_id      = data.aws_ssm_parameter.dlami.value
   instance_type = var.instance_type
 
+  tags = {
+    S3FilesFileSystemId = aws_s3files_file_system.this.id
+    FleetInstanceTypes  = join(",", sort(tolist(var.spot_fleet_instance_types)))
+  }
+
   key_name = var.key_name
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.instance.arn
-  }
-
-  instance_market_options {
-    market_type = "spot"
   }
 
   network_interfaces {
