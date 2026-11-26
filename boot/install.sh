@@ -46,15 +46,11 @@ INSTALL_STAGE="ComfyUI の導入"
 bash "$BOOT_DIR/scripts/install-comfyui.sh" "$COMFYUI_VERSION"
 
 # --- ワークフロー構築（カスタムノード導入・モデル準備・ワークフロー配置は
-# S3 上のスクリプト一式が担う。リポジトリ側は受け口だけを持つ） ---
+# S3 上のスクリプト一式が担う。リポジトリ側は受け口だけを持つ。
+# バンドルの保存は、1から構築した場合に、カスタムノード導入の直後・
+# モデル準備の前に S3 側の setup.sh から呼ばれる） ---
 INSTALL_STAGE="ワークフロー構築"
 bash "$BOOT_DIR/scripts/run-workflow-setup.sh"
-
-# --- ComfyUI バンドルの保存（1から構築した場合のみ。次回起動から使う） ---
-if [ -f /run/mycomfy-bundle-from-scratch ]; then
-  INSTALL_STAGE="ComfyUI バンドルの保存"
-  bash "$BOOT_DIR/scripts/capture-comfyui-bundle.sh"
-fi
 
 # --- systemd ユニット配置 ---
 INSTALL_STAGE="systemd サービスの登録"
