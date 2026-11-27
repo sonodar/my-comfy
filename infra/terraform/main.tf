@@ -88,6 +88,11 @@ resource "aws_iam_role_policy" "s3files_service_s3" {
           "s3:ListBucketVersions"
         ]
         Resource = [aws_s3_bucket.this.arn]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       },
       {
         Sid    = "S3ObjectPermissions"
@@ -100,6 +105,11 @@ resource "aws_iam_role_policy" "s3files_service_s3" {
           "s3:PutObject*"
         ]
         Resource = ["${aws_s3_bucket.this.arn}/*"]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       }
     ]
   })
