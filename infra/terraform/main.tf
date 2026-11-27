@@ -73,22 +73,35 @@ resource "aws_iam_role_policy" "s3files_service_s3" {
   name = "s3-access"
   role = aws_iam_role.s3files_service.id
 
+  # AWS 公式の前提条件ドキュメント（S3 Files が引き受けるロールの必須ポリシー）に合わせる。
+  # バージョン固有の操作（GetObjectVersion 等）や ListBucketVersions が要る。
+  # これが不足するとファイルシステムが MISCONFIGURED になり、マウントや読み書きは
+  # できても S3 との同期（import / export）が一切動かなくなる。
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket",
-        "s3:GetBucketVersioning"
-      ]
-      Resource = [
-        aws_s3_bucket.this.arn,
-        "${aws_s3_bucket.this.arn}/*"
-      ]
-    }]
+    Statement = [
+      {
+        Sid    = "S3BucketPermissions"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:ListBucketVersions"
+        ]
+        Resource = [aws_s3_bucket.this.arn]
+      },
+      {
+        Sid    = "S3ObjectPermissions"
+        Effect = "Allow"
+        Action = [
+          "s3:AbortMultipartUpload",
+          "s3:DeleteObject*",
+          "s3:GetObject*",
+          "s3:List*",
+          "s3:PutObject*"
+        ]
+        Resource = ["${aws_s3_bucket.this.arn}/*"]
+      }
+    ]
   })
 }
 
@@ -96,20 +109,41 @@ resource "aws_iam_role_policy" "s3files_service_events" {
   name = "eventbridge"
   role = aws_iam_role.s3files_service.id
 
+  # 公式の前提条件ドキュメントに合わせる（S3 側の変更をファイルシステムへ
+  # 反映するための EventBridge ルールを S3 Files が管理する）。
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "events:PutRule",
-        "events:PutTargets",
-        "events:DeleteRule",
-        "events:RemoveTargets",
-        "events:DescribeRule",
-        "events:ListTargetsByRule"
-      ]
-      Resource = "arn:aws:events:${var.aws_region}:${data.aws_caller_identity.current.account_id}:rule/DO-NOT-DELETE-S3-Files*"
-    }]
+    Statement = [
+      {
+        Sid    = "EventBridgeManage"
+        Effect = "Allow"
+        Action = [
+          "events:DeleteRule",
+          "events:DisableRule",
+          "events:EnableRule",
+          "events:PutRule",
+          "events:PutTargets",
+          "events:RemoveTargets"
+        ]
+        Condition = {
+          StringEquals = {
+            "events:ManagedBy" = "elasticfilesystem.amazonaws.com"
+          }
+        }
+        Resource = "arn:aws:events:${var.aws_region}:${data.aws_caller_identity.current.account_id}:rule/DO-NOT-DELETE-S3-Files*"
+      },
+      {
+        Sid    = "EventBridgeRead"
+        Effect = "Allow"
+        Action = [
+          "events:DescribeRule",
+          "events:ListRuleNamesByTarget",
+          "events:ListRules",
+          "events:ListTargetsByRule"
+        ]
+        Resource = "arn:aws:events:${var.aws_region}:${data.aws_caller_identity.current.account_id}:rule/*"
+      }
+    ]
   })
 }
 
