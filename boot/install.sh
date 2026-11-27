@@ -27,8 +27,7 @@ INSTALL_STAGE="Ubuntu パッケージの導入"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update --error-on=any
 # ffmpeg は動画の結合（フレーム画像を動画ファイルへ束ねる処理）に使う
-# attr は S3 Files の export 状態確認（getfattr）に使う
-apt-get install -y git curl unzip nfs-common jq ffmpeg attr
+apt-get install -y git curl unzip nfs-common jq ffmpeg
 
 # --- Tailscale（アクセス経路。後の工程が失敗しても SSH で入れるよう、早い段階で参加させる） ---
 INSTALL_STAGE="Tailscale の導入"
