@@ -15,13 +15,15 @@ STORE_PATH="${INSTANCE_STORE_PATH:-/mnt/instance-store}"
 DEST="${S3FILES_MOUNT:-/mnt/s3files}/$COMFYUI_BUNDLE_KEY"
 mkdir -p "$(dirname "$DEST")"
 WORK="$STORE_PATH/$(basename "$DEST")"
-# tar は実行中無言なので、開始と完了をログに残す（開始だけあって完了が
-# 無ければ、この工程で止まっていると分かるようにする）。
-echo "ComfyUI bundle save start: $DEST ($(date -Is))"
+# tar も mv も実行中無言なので、アーカイブと移動のそれぞれで開始と完了を
+# ログに残す（開始だけあって完了が無ければ、その工程で止まっていると
+# 分かるようにする）。
+echo "ComfyUI bundle archive start: $WORK ($(date -Is))"
 tar -czf "$WORK" -C "$STORE_PATH" \
   --exclude="ComfyUI/output" \
   --exclude="ComfyUI/temp" \
   --exclude="*/__pycache__" \
   ComfyUI
+echo "ComfyUI bundle archived: $WORK ($(du -h "$WORK" | cut -f1), $(date -Is))"
 mv "$WORK" "$DEST"
-echo "ComfyUI bundle saved: $DEST ($(du -h "$DEST" | cut -f1), $(date -Is))"
+echo "ComfyUI bundle moved: $DEST ($(date -Is))"
