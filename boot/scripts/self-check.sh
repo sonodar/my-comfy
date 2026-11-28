@@ -79,15 +79,29 @@ else
   fail "s3files-not-mounted" "S3 Files をマウントできていません。"
 fi
 
-# S3 API での可視確認（警告のみ。反映遅延のため）
+# S3 API での可視確認（必須ゲート）
+# マウント経由で書いて読み戻せるだけでは、S3 に届いたことの証明にならない
+# （ファイルシステム側のストレージ相手でも通る）。S3 Files の export は
+# 書き込みが止まってから60秒後に始まる仕様なので、最大5分ポーリングして
+# S3 API から見えることを合格条件にする。見えなければ export が壊れている
+# （ファイルシステムの MISCONFIGURED やサービスロールの権限不足）とみなす。
 if [ "$S3_OK" = "1" ]; then
-  MARKER="$S3_PATH/.mycomfy-boot-check-visible"
+  MARKER_NAME=".mycomfy-boot-check-visible-$(hostname)"
+  MARKER="$S3_PATH/$MARKER_NAME"
   echo "check" > "$MARKER"
-  sleep 75
-  if aws s3 ls "s3://$BUCKET_NAME/.mycomfy-boot-check-visible" >/dev/null 2>&1; then
-    echo "s3-visible: ok"
+  VISIBLE=0
+  for i in $(seq 1 15); do
+    sleep 20
+    if aws s3api head-object --bucket "$BUCKET_NAME" --key "$MARKER_NAME" >/dev/null 2>&1; then
+      VISIBLE=1
+      echo "s3-visible: ok (after $((i * 20))s)"
+      break
+    fi
+  done
+  if [ "$VISIBLE" = "1" ]; then
+    aws s3api delete-object --bucket "$BUCKET_NAME" --key "$MARKER_NAME" >/dev/null 2>&1 || true
   else
-    warn "s3-visible: not yet visible via S3 API (sync delay; not fatal)" "S3 API から確認用ファイルをまだ参照できません。S3 Files からの反映に時間がかかっている可能性があります。"
+    fail "s3files-export" "S3 Files に書いたファイルが5分待っても S3 に現れません。ファイルシステムの状態（MISCONFIGURED）とサービスロールの権限を確認してください。次に取るもの：CloudWatch の FailedExports メトリクス。"
   fi
   rm -f "$MARKER"
 fi
